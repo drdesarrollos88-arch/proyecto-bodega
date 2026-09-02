@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { RoleSwitcher } from './components/layout/RoleSwitcher';
 import { Navbar } from './components/layout/Navbar';
+import { LoginView } from './components/auth/LoginView';
 import { SupabaseModal } from './components/layout/SupabaseModal';
+
+// Panel Superadmin
+import { SuperadminDashboard } from './components/admin/SuperadminDashboard';
 
 // Vistas del Técnico
 import { NewRequestView } from './components/technician/NewRequestView';
@@ -26,29 +29,47 @@ import { AuditRecordsView } from './components/manager/AuditRecordsView';
 
 import { Product } from './types';
 
-const MainContent: React.FC = () => {
-  const { currentUser } = useAuth();
+const MainLayout: React.FC = () => {
+  const { isAuthenticated, activeUser } = useAuth();
   const [currentTab, setCurrentTab] = useState<string>('nueva_solicitud');
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
   const [productForPurchase, setProductForPurchase] = useState<Product | null>(null);
 
-  // Al cambiar de rol, restablecer a la pestaña principal de ese rol
+  // Inicializar pestaña por defecto según el rol del usuario conectado
   useEffect(() => {
-    switch (currentUser.role) {
-      case 'tecnico':
-        setCurrentTab('nueva_solicitud');
-        break;
-      case 'supervisor':
-        setCurrentTab('aprobaciones');
-        break;
-      case 'bodeguero_admin':
-        setCurrentTab('despacho');
+    if (!activeUser) return;
+
+    switch (activeUser.role) {
+      case 'superadmin':
+        setCurrentTab('admin_panel');
         break;
       case 'jefe_seccion':
         setCurrentTab('dashboard_ejecutivo');
         break;
+      case 'bodeguero_admin':
+        setCurrentTab('despacho');
+        break;
+      case 'supervisor':
+        setCurrentTab('aprobaciones');
+        break;
+      case 'tecnico':
+        setCurrentTab('nueva_solicitud');
+        break;
     }
-  }, [currentUser.role]);
+  }, [activeUser?.id, activeUser?.role]);
+
+  // Si no está autenticado, mostrar pantalla de inicio de sesión
+  if (!isAuthenticated || !activeUser) {
+    return (
+      <>
+        <LoginView onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)} />
+        <SupabaseModal
+          isOpen={isSupabaseModalOpen}
+          onClose={() => setIsSupabaseModalOpen(false)}
+        />
+      </>
+    );
+  }
 
   const handleGoToPurchase = (prod: Product) => {
     setProductForPurchase(prod);
@@ -56,92 +77,120 @@ const MainContent: React.FC = () => {
   };
 
   const renderActiveTab = () => {
-    switch (currentTab) {
-      // Pestañas Técnico
-      case 'nueva_solicitud':
-        return <NewRequestView onSuccessSubmit={() => setCurrentTab('mis_solicitudes')} />;
-      case 'mis_solicitudes':
-        return <RequestHistoryView />;
-      case 'mis_retiros':
-        return <MyReceiptsView />;
-
-      // Pestañas Supervisor
-      case 'aprobaciones':
-        return <PendingApprovalsView />;
-      case 'stock_consulta':
-        return <SupervisorStockView />;
-      case 'presupuesto_supervisor':
-        return <SupervisorBudgetView />;
-
-      // Pestañas Bodega & Administrativo
-      case 'despacho':
-        return <DeliveryQueueView />;
-      case 'inventario':
-        return <InventoryTableView onGoToPurchaseOrder={handleGoToPurchase} />;
-      case 'compras':
-        return (
-          <PurchaseOrdersView
-            initialProductToOrder={productForPurchase}
-          />
-        );
-      case 'actas_auditoria':
-        return <AuditRecordsView />;
-      case 'metricas_admin':
-        return (
-          <ExecutiveDashboardView
-            onNavigateToStock={() => setCurrentTab('inventario')}
-            onNavigateToBudget={() => setCurrentTab('presupuestos_area')}
-            onNavigateToAudit={() => setCurrentTab('actas_auditoria')}
-          />
-        );
-
-      // Pestañas Jefe de Sección
-      case 'dashboard_ejecutivo':
-        return (
-          <ExecutiveDashboardView
-            onNavigateToStock={() => setCurrentTab('stock_critico')}
-            onNavigateToBudget={() => setCurrentTab('presupuestos_area')}
-            onNavigateToAudit={() => setCurrentTab('auditoria_total')}
-          />
-        );
-      case 'presupuestos_area':
-        return <CostCentersBudgetView />;
-      case 'stock_critico':
-        return <InventoryTableView onGoToPurchaseOrder={handleGoToPurchase} />;
-      case 'auditoria_total':
-        return <AuditRecordsView />;
-
-      default:
-        return <div className="p-8 text-center text-slate-500">Pestaña no encontrada</div>;
+    // 1. ROL STAFF / SUPERADMIN
+    if (activeUser.role === 'superadmin') {
+      switch (currentTab) {
+        case 'admin_panel':
+          return <SuperadminDashboard />;
+        case 'dashboard_ejecutivo':
+          return <ExecutiveDashboardView />;
+        case 'presupuestos_area':
+          return <CostCentersBudgetView />;
+        case 'inventario':
+          return <InventoryTableView onGoToPurchaseOrder={handleGoToPurchase} />;
+        case 'auditoria_total':
+          return <AuditRecordsView />;
+        default:
+          return <SuperadminDashboard />;
+      }
     }
+
+    // 2. ROL TÉCNICO DE TERRENO (Vista Separada Estricta)
+    if (activeUser.role === 'tecnico') {
+      switch (currentTab) {
+        case 'nueva_solicitud':
+          return <NewRequestView onSuccessSubmit={() => setCurrentTab('mis_solicitudes')} />;
+        case 'mis_solicitudes':
+          return <RequestHistoryView />;
+        case 'mis_retiros':
+          return <MyReceiptsView />;
+        default:
+          return <NewRequestView onSuccessSubmit={() => setCurrentTab('mis_solicitudes')} />;
+      }
+    }
+
+    // 3. ROL SUPERVISOR (Vista Separada Estricta)
+    if (activeUser.role === 'supervisor') {
+      switch (currentTab) {
+        case 'aprobaciones':
+          return <PendingApprovalsView />;
+        case 'stock_consulta':
+          return <SupervisorStockView />;
+        case 'presupuesto_supervisor':
+          return <SupervisorBudgetView />;
+        default:
+          return <PendingApprovalsView />;
+      }
+    }
+
+    // 4. ROL BODEGA & COMPRAS (Vista Separada Estricta)
+    if (activeUser.role === 'bodeguero_admin') {
+      switch (currentTab) {
+        case 'despacho':
+          return <DeliveryQueueView />;
+        case 'inventario':
+          return <InventoryTableView onGoToPurchaseOrder={handleGoToPurchase} />;
+        case 'compras':
+          return <PurchaseOrdersView initialProductToOrder={productForPurchase} />;
+        case 'actas_auditoria':
+          return <AuditRecordsView />;
+        default:
+          return <DeliveryQueueView />;
+      }
+    }
+
+    // 5. ROL JEFE DE SECCIÓN (Vista Separada Estricta)
+    if (activeUser.role === 'jefe_seccion') {
+      switch (currentTab) {
+        case 'dashboard_ejecutivo':
+          return (
+            <ExecutiveDashboardView
+              onNavigateToStock={() => setCurrentTab('stock_critico')}
+              onNavigateToBudget={() => setCurrentTab('presupuestos_area')}
+              onNavigateToAudit={() => setCurrentTab('auditoria_total')}
+            />
+          );
+        case 'presupuestos_area':
+          return <CostCentersBudgetView />;
+        case 'stock_critico':
+          return <InventoryTableView onGoToPurchaseOrder={handleGoToPurchase} />;
+        case 'auditoria_total':
+          return <AuditRecordsView />;
+        default:
+          return <ExecutiveDashboardView />;
+      }
+    }
+
+    return <div className="p-8 text-center text-slate-500">Módulo no disponible</div>;
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100/70 text-slate-900">
-      {/* Barra de alternancia de roles para pruebas completas */}
-      <RoleSwitcher onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)} />
-
-      {/* Navegación principal */}
-      <Navbar currentTab={currentTab} onSelectTab={(tab) => setCurrentTab(tab)} />
+      {/* Navegación específica según el rol autenticado */}
+      <Navbar
+        currentTab={currentTab}
+        onSelectTab={(tab) => setCurrentTab(tab)}
+        onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
+      />
 
       {/* Contenido Principal */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4 md:p-6">
         {renderActiveTab()}
       </main>
 
-      {/* Pie de Página Corporativo con confirmación de especificación */}
+      {/* Pie de Página */}
       <footer className="bg-white border-t border-slate-300 py-3 px-4 text-center text-slate-500 text-calibri-normal no-print">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
           <span>
             Sistema Integral de Bodega e Inventarios • <strong>Tipografía Calibri (10pt texto / 12pt títulos)</strong>
           </span>
           <span>
-            Trazabilidad Inmutable con Firmas Digitales y Fotos de Entrega • Supabase Ready
+            Portal Conectado con Supabase PostgreSQL & Hosting Vercel
           </span>
         </div>
       </footer>
 
-      {/* Modal de Configuración y Esquema de Supabase */}
+      {/* Modal de Supabase */}
       <SupabaseModal
         isOpen={isSupabaseModalOpen}
         onClose={() => setIsSupabaseModalOpen(false)}
@@ -153,8 +202,7 @@ const MainContent: React.FC = () => {
 export default function App() {
   return (
     <AuthProvider>
-      <MainContent />
+      <MainLayout />
     </AuthProvider>
   );
 }
-

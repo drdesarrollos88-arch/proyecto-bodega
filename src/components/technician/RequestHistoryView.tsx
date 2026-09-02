@@ -10,7 +10,8 @@ interface RequestHistoryViewProps {
 }
 
 export const RequestHistoryView: React.FC<RequestHistoryViewProps> = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, activeUser } = useAuth();
+  const user = activeUser || currentUser || store.getProfiles()[0];
   const [requests, setRequests] = useState<WarehouseRequest[]>(() => store.getRequests());
   const [statusFilter, setStatusFilter] = useState<string>('todos');
 
@@ -22,7 +23,7 @@ export const RequestHistoryView: React.FC<RequestHistoryViewProps> = () => {
 
   // Filtrar solicitudes del técnico activo o todas si se desea supervisar
   const technicianRequests = requests.filter((r) =>
-    currentUser.role === 'tecnico' ? r.technician_id === currentUser.id : true
+    user.role === 'tecnico' ? r.technician_id === user.id : true
   );
 
   const filteredRequests = technicianRequests.filter((r) => {

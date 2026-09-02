@@ -21,7 +21,8 @@ interface PurchaseOrdersViewProps {
 }
 
 export const PurchaseOrdersView: React.FC<PurchaseOrdersViewProps> = ({ initialProductToOrder }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, activeUser } = useAuth();
+  const user = activeUser || currentUser || store.getProfiles()[0];
   const [purchases, setPurchases] = useState<PurchaseOrder[]>(() => store.getPurchaseOrders());
   const [products, setProducts] = useState<Product[]>(() => store.getProducts());
   const [showCreateModal, setShowCreateModal] = useState<boolean>(!!initialProductToOrder);
@@ -70,7 +71,7 @@ export const PurchaseOrdersView: React.FC<PurchaseOrdersViewProps> = ({ initialP
       quantity: Number(quantity),
       estimatedUnitCost: Number(estimatedCost),
       supplier: supplier.trim(),
-      requestedBy: currentUser.name,
+      requestedBy: user.name,
     });
 
     setFeedback(`Orden de Compra ${newOrder.id} generada exitosamente.`);

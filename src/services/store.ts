@@ -51,6 +51,15 @@ const INITIAL_COST_CENTERS: CostCenter[] = [
 
 const INITIAL_PROFILES: UserProfile[] = [
   {
+    id: 'USR-00',
+    name: 'Administrador General (Staff)',
+    rut: '10.000.000-1',
+    role: 'superadmin',
+    cost_center_id: 'CC-104',
+    phone: '+56 9 9000 0000',
+    email: 'admin@empresa.cl',
+  },
+  {
     id: 'USR-01',
     name: 'Carlos Muñoz Alarcón',
     rut: '16.894.221-5',
@@ -129,7 +138,7 @@ const INITIAL_PRODUCTS: Product[] = [
     name: 'Zapatos de Seguridad Dieléctricos Talla 42',
     category: 'EPP',
     unit: 'par',
-    current_stock: 4, // Stock crítico
+    current_stock: 4,
     min_stock: 8,
     unit_price: 48900,
     location: 'Pasillo 1 - Estante B1',
@@ -162,7 +171,7 @@ const INITIAL_PRODUCTS: Product[] = [
     name: 'Arnés de Seguridad 4 Argollas con Cabo de Vida',
     category: 'EPP',
     unit: 'unidad',
-    current_stock: 3, // Stock crítico
+    current_stock: 3,
     min_stock: 6,
     unit_price: 65000,
     location: 'Pasillo 1 - Estante C1',
@@ -219,7 +228,7 @@ const INITIAL_PRODUCTS: Product[] = [
     name: 'Crimpadora de Conectores RJ45 / RJ11 con Testeador',
     category: 'Herramientas Menores',
     unit: 'unidad',
-    current_stock: 4, // Stock crítico
+    current_stock: 4,
     min_stock: 6,
     unit_price: 28900,
     location: 'Pasillo 2 - Estante B2',
@@ -276,7 +285,7 @@ const INITIAL_PRODUCTS: Product[] = [
     name: 'Resma Papel Carta 75g (500 Hojas) Alta Blancura',
     category: 'Artículos de Oficina',
     unit: 'resma',
-    current_stock: 12, // Stock crítico
+    current_stock: 12,
     min_stock: 20,
     unit_price: 4800,
     location: 'Pasillo 3 - Estante A3',
@@ -309,7 +318,7 @@ const INITIAL_PRODUCTS: Product[] = [
     name: 'Tóner Negro Compatible HP LaserJet Enterprise',
     category: 'Artículos de Oficina',
     unit: 'unidad',
-    current_stock: 2, // Stock crítico
+    current_stock: 2,
     min_stock: 4,
     unit_price: 45000,
     location: 'Pasillo 3 - Estante B3',
@@ -466,7 +475,6 @@ const INITIAL_PURCHASES: PurchaseOrder[] = [
   },
 ];
 
-// Placeholder de firma SVG en Base64 para registro semilla
 const SAMPLE_SIGNATURE = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="100"><path d="M 20 60 Q 60 20 100 50 T 180 40 T 260 70" fill="none" stroke="%230284c7" stroke-width="3"/></svg>';
 const SAMPLE_PHOTO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" style="background:%230f172a"><text x="50%" y="45%" fill="%2338bdf8" font-size="16" text-anchor="middle" font-family="Calibri">ENTREGA DE MATERIALES EN BODEGA</text><text x="50%" y="60%" fill="%2394a3b8" font-size="13" text-anchor="middle" font-family="Calibri">Evidencia Fotográfica Verificada #ACTA-2026-0001</text></svg>';
 
@@ -509,7 +517,7 @@ const INITIAL_DELIVERIES: DeliveryRecord[] = [
 ];
 
 // ============================================================================
-// HELPER DE PERSISTENCIA REACTIVA
+// ALMACÉN REACTIVO
 // ============================================================================
 
 class WarehouseStore {
@@ -526,8 +534,16 @@ class WarehouseStore {
     if (!localStorage.getItem(STORAGE_KEYS.COST_CENTERS)) {
       localStorage.setItem(STORAGE_KEYS.COST_CENTERS, JSON.stringify(INITIAL_COST_CENTERS));
     }
-    if (!localStorage.getItem(STORAGE_KEYS.PROFILES)) {
+    // Asegurar que el perfil USR-00 (Superadmin) exista
+    const rawProfiles = localStorage.getItem(STORAGE_KEYS.PROFILES);
+    if (!rawProfiles) {
       localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(INITIAL_PROFILES));
+    } else {
+      const parsed: UserProfile[] = JSON.parse(rawProfiles);
+      if (!parsed.some(p => p.role === 'superadmin')) {
+        parsed.unshift(INITIAL_PROFILES[0]);
+        localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(parsed));
+      }
     }
     if (!localStorage.getItem(STORAGE_KEYS.REQUESTS)) {
       localStorage.setItem(STORAGE_KEYS.REQUESTS, JSON.stringify(INITIAL_REQUESTS));
@@ -549,7 +565,7 @@ class WarehouseStore {
     this.listeners.forEach((l) => l());
   }
 
-  // --- PRODUCTOS ---
+  // --- PRODUCTOS CRUD ---
   public getProducts(): Product[] {
     const raw = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
     return raw ? JSON.parse(raw) : INITIAL_PRODUCTS;
@@ -566,7 +582,6 @@ class WarehouseStore {
     localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
     this.notify();
 
-    // Sincronizar con Supabase si está disponible
     const client = getSupabase();
     if (client) {
       client.from('products').insert([newProduct]).then();
@@ -586,7 +601,18 @@ class WarehouseStore {
     }
   }
 
-  // --- CENTROS DE COSTO ---
+  public deleteProduct(id: string): void {
+    const products = this.getProducts().filter((p) => p.id !== id);
+    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+    this.notify();
+
+    const client = getSupabase();
+    if (client) {
+      client.from('products').delete().eq('id', id).then();
+    }
+  }
+
+  // --- CENTROS DE COSTO CRUD ---
   public getCostCenters(): CostCenter[] {
     const raw = localStorage.getItem(STORAGE_KEYS.COST_CENTERS);
     return raw ? JSON.parse(raw) : INITIAL_COST_CENTERS;
@@ -596,7 +622,47 @@ class WarehouseStore {
     return this.getCostCenters().find((c) => c.id === id);
   }
 
-  // --- PERFILES ---
+  public addCostCenter(cc: Omit<CostCenter, 'id'>): CostCenter {
+    const costCenters = this.getCostCenters();
+    const newCC: CostCenter = {
+      ...cc,
+      id: cc.code.toUpperCase().trim(),
+    };
+    costCenters.push(newCC);
+    localStorage.setItem(STORAGE_KEYS.COST_CENTERS, JSON.stringify(costCenters));
+    this.notify();
+
+    const client = getSupabase();
+    if (client) {
+      client.from('cost_centers').insert([newCC]).then();
+    }
+
+    return newCC;
+  }
+
+  public updateCostCenter(id: string, updates: Partial<CostCenter>): void {
+    const costCenters = this.getCostCenters().map((c) => (c.id === id ? { ...c, ...updates } : c));
+    localStorage.setItem(STORAGE_KEYS.COST_CENTERS, JSON.stringify(costCenters));
+    this.notify();
+
+    const client = getSupabase();
+    if (client) {
+      client.from('cost_centers').update(updates).eq('id', id).then();
+    }
+  }
+
+  public deleteCostCenter(id: string): void {
+    const costCenters = this.getCostCenters().filter((c) => c.id !== id);
+    localStorage.setItem(STORAGE_KEYS.COST_CENTERS, JSON.stringify(costCenters));
+    this.notify();
+
+    const client = getSupabase();
+    if (client) {
+      client.from('cost_centers').delete().eq('id', id).then();
+    }
+  }
+
+  // --- USUARIOS / PERFILES CRUD ---
   public getProfiles(): UserProfile[] {
     const raw = localStorage.getItem(STORAGE_KEYS.PROFILES);
     return raw ? JSON.parse(raw) : INITIAL_PROFILES;
@@ -604,6 +670,47 @@ class WarehouseStore {
 
   public getProfileById(id: string): UserProfile | undefined {
     return this.getProfiles().find((p) => p.id === id);
+  }
+
+  public addUser(user: Omit<UserProfile, 'id'>): UserProfile {
+    const profiles = this.getProfiles();
+    const newId = 'USR-' + String(profiles.length).padStart(2, '0');
+    const newUser: UserProfile = {
+      ...user,
+      id: newId,
+    };
+    profiles.push(newUser);
+    localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(profiles));
+    this.notify();
+
+    const client = getSupabase();
+    if (client) {
+      client.from('profiles').insert([newUser]).then();
+    }
+
+    return newUser;
+  }
+
+  public updateUser(id: string, updates: Partial<UserProfile>): void {
+    const profiles = this.getProfiles().map((p) => (p.id === id ? { ...p, ...updates } : p));
+    localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(profiles));
+    this.notify();
+
+    const client = getSupabase();
+    if (client) {
+      client.from('profiles').update(updates).eq('id', id).then();
+    }
+  }
+
+  public deleteUser(id: string): void {
+    const profiles = this.getProfiles().filter((p) => p.id !== id);
+    localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(profiles));
+    this.notify();
+
+    const client = getSupabase();
+    if (client) {
+      client.from('profiles').delete().eq('id', id).then();
+    }
   }
 
   // --- SOLICITUDES ---
@@ -698,27 +805,22 @@ class WarehouseStore {
     const costCenters = this.getCostCenters();
     const deliveries = this.getDeliveries();
 
-    // 1. Calcular monto total de la entrega
     let totalAmount = 0;
     req.items.forEach((item) => {
       totalAmount += item.total_price;
-      // 2. Descontar stock de cada producto
       const prodIndex = products.findIndex((p) => p.id === item.product_id || p.sku === item.product_sku);
       if (prodIndex >= 0) {
         products[prodIndex].current_stock = Math.max(0, products[prodIndex].current_stock - item.quantity);
       }
     });
 
-    // 3. Imputar gasto al presupuesto del Centro de Costo
     const ccIndex = costCenters.findIndex((c) => c.id === req.cost_center_id);
     if (ccIndex >= 0) {
       costCenters[ccIndex].executed_budget += totalAmount;
     }
 
-    // 4. Marcar solicitud como 'entregada'
     req.status = 'entregada';
 
-    // 5. Crear Acta de Entrega con código auditado
     const actaCount = deliveries.length + 1;
     const actaId = `ACTA-2026-${String(actaCount).padStart(4, '0')}`;
 
@@ -739,7 +841,6 @@ class WarehouseStore {
 
     deliveries.unshift(newDelivery);
 
-    // Guardar en Storage
     localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
     localStorage.setItem(STORAGE_KEYS.COST_CENTERS, JSON.stringify(costCenters));
     localStorage.setItem(STORAGE_KEYS.REQUESTS, JSON.stringify(requests));
@@ -747,7 +848,6 @@ class WarehouseStore {
 
     this.notify();
 
-    // Replicar en Supabase si está conectado
     const client = getSupabase();
     if (client) {
       client.from('deliveries').insert([{
@@ -778,7 +878,7 @@ class WarehouseStore {
     return this.getDeliveries().find((d) => d.id === id);
   }
 
-  // --- ÓRDENES DE COMPRA (SOLICITUDES DE REABASTECIMIENTO) ---
+  // --- ÓRDENES DE COMPRA ---
   public getPurchaseOrders(): PurchaseOrder[] {
     const raw = localStorage.getItem(STORAGE_KEYS.PURCHASES);
     return raw ? JSON.parse(raw) : INITIAL_PURCHASES;
@@ -831,7 +931,6 @@ class WarehouseStore {
     order.status = 'recibida';
     order.received_at = new Date().toISOString();
 
-    // Incrementar stock del producto
     const products = this.getProducts();
     const prod = products.find((p) => p.id === order.product_id || p.sku === order.product_sku);
     if (prod) {
@@ -855,7 +954,6 @@ class WarehouseStore {
     }
   }
 
-  // Reiniciar datos a fábrica si el usuario lo solicita
   public resetToDefaults(): void {
     localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(INITIAL_PRODUCTS));
     localStorage.setItem(STORAGE_KEYS.COST_CENTERS, JSON.stringify(INITIAL_COST_CENTERS));
@@ -868,4 +966,3 @@ class WarehouseStore {
 }
 
 export const store = new WarehouseStore();
-

@@ -17,7 +17,8 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
   onClose,
   onDeliveryCompleted,
 }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, activeUser } = useAuth();
+  const user = activeUser || currentUser || store.getProfiles()[0];
   const [signatureData, setSignatureData] = useState<string>('');
   const [photoData, setPhotoData] = useState<string>('');
   const [observations, setObservations] = useState<string>('');
@@ -47,7 +48,7 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
       setIsProcessing(true);
       const deliveryRecord = store.completeDelivery({
         requestId: request.id,
-        warehouseStaffName: currentUser.name,
+        warehouseStaffName: user.name,
         signatureData,
         photoData,
         observations: observations.trim() || undefined,
@@ -102,7 +103,7 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
             </div>
             <div>
               <span className="text-xs text-slate-500 block font-bold">Bodeguero Despachador:</span>
-              <p className="text-slate-900 font-semibold">{currentUser.name}</p>
+              <p className="text-slate-900 font-semibold">{user.name}</p>
               <p className="text-xs text-slate-500">Bodega Central</p>
             </div>
           </div>

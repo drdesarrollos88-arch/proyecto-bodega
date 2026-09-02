@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types';
-import { HardHat, ClipboardCheck, PackageCheck, BarChart3, Database, CheckCircle2, AlertCircle, RotateCcw } from 'lucide-react';
+import { HardHat, ClipboardCheck, PackageCheck, BarChart3, Database, CheckCircle2, AlertCircle, RotateCcw, Crown } from 'lucide-react';
 import { isSupabaseConfigured } from '../../services/supabase';
 import { store } from '../../services/store';
 
@@ -14,30 +14,38 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ onOpenSupabaseModal 
   const [showConfirmReset, setShowConfirmReset] = useState(false);
   const isSupabaseReady = isSupabaseConfigured();
 
+  if (!currentUser) return null;
+
   const roles: { role: UserRole; label: string; icon: React.ReactNode; desc: string }[] = [
     {
-      role: 'tecnico',
-      label: 'Técnico de Terreno',
-      icon: <HardHat className="w-3.5 h-3.5" />,
-      desc: 'Pide insumos en faena',
-    },
-    {
-      role: 'supervisor',
-      label: 'Supervisor',
-      icon: <ClipboardCheck className="w-3.5 h-3.5" />,
-      desc: 'Revisa stock y autoriza',
-    },
-    {
-      role: 'bodeguero_admin',
-      label: 'Bodega & Compras',
-      icon: <PackageCheck className="w-3.5 h-3.5" />,
-      desc: 'Entrega con firma/foto y compras',
+      role: 'superadmin',
+      label: 'Staff / Superadmin',
+      icon: <Crown className="w-3.5 h-3.5 text-amber-400" />,
+      desc: 'Control total de plataforma',
     },
     {
       role: 'jefe_seccion',
       label: 'Jefe de Sección',
       icon: <BarChart3 className="w-3.5 h-3.5" />,
-      desc: 'Presupuestos, auditoría y métricas',
+      desc: 'Presupuestos y métricas',
+    },
+    {
+      role: 'bodeguero_admin',
+      label: 'Bodega & Compras',
+      icon: <PackageCheck className="w-3.5 h-3.5" />,
+      desc: 'Entrega física y órdenes',
+    },
+    {
+      role: 'supervisor',
+      label: 'Supervisor',
+      icon: <ClipboardCheck className="w-3.5 h-3.5" />,
+      desc: 'Autorización y stock',
+    },
+    {
+      role: 'tecnico',
+      label: 'Técnico de Terreno',
+      icon: <HardHat className="w-3.5 h-3.5" />,
+      desc: 'Pide insumos en faena',
     },
   ];
 
@@ -49,7 +57,6 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ onOpenSupabaseModal 
   return (
     <div className="bg-slate-900 text-white px-3 py-2 border-b border-slate-800 shadow-sm no-print">
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-        {/* Usuario Activo y Rol */}
         <div className="flex items-center gap-2">
           <span className="text-calibri-normal text-slate-400 hidden sm:inline">Perfil Activo:</span>
           <div className="flex items-center gap-1.5 bg-slate-800 px-2.5 py-1 rounded border border-slate-700">
@@ -62,9 +69,8 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ onOpenSupabaseModal 
           </div>
         </div>
 
-        {/* Botones de Cambio Rápido de Rol */}
         <div className="flex items-center gap-1 overflow-x-auto py-0.5">
-          <span className="text-calibri-normal text-slate-400 text-xs mr-1 hidden lg:inline">Simular vista:</span>
+          <span className="text-calibri-normal text-slate-400 text-xs mr-1 hidden lg:inline">Alternar:</span>
           {roles.map((r) => {
             const isActive = currentUser.role === r.role;
             return (
@@ -85,7 +91,6 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ onOpenSupabaseModal 
           })}
         </div>
 
-        {/* Estado Supabase y Herramientas */}
         <div className="flex items-center gap-2">
           <button
             onClick={onOpenSupabaseModal}
@@ -109,7 +114,6 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ onOpenSupabaseModal 
             )}
           </button>
 
-          {/* Reiniciar datos demo */}
           {showConfirmReset ? (
             <div className="flex items-center gap-1 bg-rose-950 border border-rose-800 px-2 py-0.5 rounded">
               <span className="text-calibri-normal text-rose-300 text-xs">¿Restaurar?</span>
@@ -140,4 +144,3 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ onOpenSupabaseModal 
     </div>
   );
 };
-

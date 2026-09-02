@@ -6,7 +6,8 @@ import { FileText, Eye, Calendar, DollarSign, ShieldCheck, User } from 'lucide-r
 import { DeliveryReceiptModal } from '../reports/DeliveryReceiptModal';
 
 export const MyReceiptsView: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, activeUser } = useAuth();
+  const user = activeUser || currentUser || store.getProfiles()[0];
   const [deliveries, setDeliveries] = useState<DeliveryRecord[]>(() => store.getDeliveries());
   const [selectedDelivery, setSelectedDelivery] = useState<DeliveryRecord | null>(null);
 
@@ -16,9 +17,9 @@ export const MyReceiptsView: React.FC = () => {
     });
   }, []);
 
-  // Filtrar si es técnico
-  const myDeliveries = deliveries.filter((d) =>
-    currentUser.role === 'tecnico' ? d.technician_rut === currentUser.rut : true
+  // Filtrar comprobantes correspondientes a este técnico (o todos si es admin)
+  const myDeliveries = deliveries.filter(
+    (d) => d.technician_name === user.name || d.technician_rut === user.rut
   );
 
   return (

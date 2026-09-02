@@ -5,7 +5,8 @@ import { useAuth } from '../../context/AuthContext';
 import { DollarSign, CheckCircle2, TrendingUp, AlertCircle } from 'lucide-react';
 
 export const SupervisorBudgetView: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, activeUser } = useAuth();
+  const user = activeUser || currentUser || store.getProfiles()[0];
   const [costCenters, setCostCenters] = useState<CostCenter[]>(() => store.getCostCenters());
   const [requests, setRequests] = useState<WarehouseRequest[]>(() => store.getRequests());
 
@@ -16,7 +17,7 @@ export const SupervisorBudgetView: React.FC = () => {
     });
   }, []);
 
-  const myCC = costCenters.find((c) => c.id === currentUser.cost_center_id) || costCenters[0];
+  const myCC = costCenters.find((c) => c.id === user.cost_center_id) || costCenters[0];
   const assigned = Number(myCC.assigned_budget);
   const executed = Number(myCC.executed_budget);
   const balance = assigned - executed;

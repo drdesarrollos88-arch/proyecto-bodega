@@ -16,7 +16,8 @@ import {
 import { Badge } from '../common/Badge';
 
 export const PendingApprovalsView: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, activeUser } = useAuth();
+  const user = activeUser || currentUser || store.getProfiles()[0];
   const [requests, setRequests] = useState<WarehouseRequest[]>(() => store.getRequests());
   const [products, setProducts] = useState<Product[]>(() => store.getProducts());
   const [costCenters, setCostCenters] = useState<CostCenter[]>(() => store.getCostCenters());
@@ -53,8 +54,8 @@ export const PendingApprovalsView: React.FC = () => {
     store.updateRequestStatus(
       actionModal.request.id,
       newStatus,
-      currentUser.id,
-      currentUser.name,
+      user.id,
+      user.name,
       notes.trim() || undefined
     );
 

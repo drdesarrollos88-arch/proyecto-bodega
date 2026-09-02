@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     rut TEXT NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ('tecnico', 'supervisor', 'bodeguero_admin', 'jefe_seccion')),
+    role TEXT NOT NULL CHECK (role IN ('tecnico', 'supervisor', 'bodeguero_admin', 'jefe_seccion', 'superadmin')),
     cost_center_id TEXT REFERENCES cost_centers(id),
     phone TEXT,
     email TEXT,

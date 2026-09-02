@@ -22,7 +22,8 @@ export type UserRole =
   | 'tecnico' 
   | 'supervisor' 
   | 'bodeguero_admin' 
-  | 'jefe_seccion';
+  | 'jefe_seccion'
+  | 'superadmin';
 
 export interface UserProfile {
   id: string;
@@ -77,15 +78,15 @@ export interface WarehouseRequest {
 }
 
 export interface DeliveryRecord {
-  id: string; // e.g. ACTA-2026-0001
+  id: string;
   request_id: string;
   technician_name: string;
   technician_rut: string;
   warehouse_staff_name: string;
   cost_center_id: string;
   total_amount: number;
-  signature_data: string; // Base64 data URL
-  photo_data: string;     // Base64 data URL
+  signature_data: string;
+  photo_data: string;
   observations?: string;
   delivered_at: string;
   items: RequestItem[];
@@ -107,4 +108,3 @@ export interface PurchaseOrder {
   created_at: string;
   received_at?: string;
 }
-

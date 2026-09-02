@@ -3,61 +3,104 @@ import { UserProfile, UserRole } from '../types';
 import { store } from '../services/store';
 
 interface AuthContextType {
-  currentUser: UserProfile;
-  setRole: (role: UserRole) => void;
+  currentUser: UserProfile | null;
+  activeUser: UserProfile | null;
+  isAuthenticated: boolean;
+  isEmulating: boolean;
   allUsers: UserProfile[];
-  switchUser: (userId: string) => void;
+  login: (userId: string) => void;
+  logout: () => void;
+  setRole: (role: UserRole) => void;
+  startEmulation: (user: UserProfile) => void;
+  stopEmulation: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<UserProfile[]>(() => store.getProfiles());
-  const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
-    const saved = localStorage.getItem('bodega_current_user_id');
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
+    const saved = localStorage.getItem('bodega_auth_user_id');
     const profiles = store.getProfiles();
-    const found = profiles.find(p => p.id === saved);
-    // Por defecto iniciar como Técnico para demostrar el flujo desde el inicio
-    return found || profiles[0] || {
-      id: 'USR-01',
-      name: 'Carlos Muñoz Alarcón',
-      rut: '16.894.221-5',
-      role: 'tecnico',
-      cost_center_id: 'CC-101',
-      phone: '+56 9 8452 1190',
-      email: 'carlos.munoz@empresa.cl'
-    };
+    return profiles.find((p) => p.id === saved) || null;
+  });
+
+  const [emulatedUser, setEmulatedUser] = useState<UserProfile | null>(() => {
+    const saved = localStorage.getItem('bodega_emulated_user_id');
+    const profiles = store.getProfiles();
+    return profiles.find((p) => p.id === saved) || null;
   });
 
   useEffect(() => {
     return store.subscribe(() => {
       const currentProfiles = store.getProfiles();
       setUsers(currentProfiles);
-      const updatedCurrent = currentProfiles.find(p => p.id === currentUser.id);
-      if (updatedCurrent) {
-        setCurrentUser(updatedCurrent);
+      if (currentUser) {
+        const updated = currentProfiles.find((p) => p.id === currentUser.id);
+        if (updated) setCurrentUser(updated);
+      }
+      if (emulatedUser) {
+        const updatedEm = currentProfiles.find((p) => p.id === emulatedUser.id);
+        if (updatedEm) setEmulatedUser(updatedEm);
       }
     });
-  }, [currentUser.id]);
+  }, [currentUser?.id, emulatedUser?.id]);
 
-  const setRole = (role: UserRole) => {
-    const targetUser = users.find(u => u.role === role);
-    if (targetUser) {
-      setCurrentUser(targetUser);
-      localStorage.setItem('bodega_current_user_id', targetUser.id);
-    }
-  };
-
-  const switchUser = (userId: string) => {
-    const found = users.find(u => u.id === userId);
+  const login = (userId: string) => {
+    const found = users.find((u) => u.id === userId || u.rut === userId || u.email === userId);
     if (found) {
       setCurrentUser(found);
-      localStorage.setItem('bodega_current_user_id', found.id);
+      setEmulatedUser(null);
+      localStorage.setItem('bodega_auth_user_id', found.id);
+      localStorage.removeItem('bodega_emulated_user_id');
     }
   };
 
+  const logout = () => {
+    setCurrentUser(null);
+    setEmulatedUser(null);
+    localStorage.removeItem('bodega_auth_user_id');
+    localStorage.removeItem('bodega_emulated_user_id');
+  };
+
+  const setRole = (role: UserRole) => {
+    const found = users.find((u) => u.role === role);
+    if (found) {
+      setCurrentUser(found);
+      setEmulatedUser(null);
+      localStorage.setItem('bodega_auth_user_id', found.id);
+    }
+  };
+
+  const startEmulation = (user: UserProfile) => {
+    if (currentUser?.role === 'superadmin') {
+      setEmulatedUser(user);
+      localStorage.setItem('bodega_emulated_user_id', user.id);
+    }
+  };
+
+  const stopEmulation = () => {
+    setEmulatedUser(null);
+    localStorage.removeItem('bodega_emulated_user_id');
+  };
+
+  const activeUser = emulatedUser || currentUser;
+
   return (
-    <AuthContext.Provider value={{ currentUser, setRole, allUsers: users, switchUser }}>
+    <AuthContext.Provider
+      value={{
+        currentUser,
+        activeUser,
+        isAuthenticated: !!currentUser,
+        isEmulating: !!emulatedUser,
+        allUsers: users,
+        login,
+        logout,
+        setRole,
+        startEmulation,
+        stopEmulation,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -70,4 +113,3 @@ export const useAuth = () => {
   }
   return context;
 };
-

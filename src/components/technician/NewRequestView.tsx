@@ -15,7 +15,8 @@ interface NewRequestViewProps {
 }
 
 export const NewRequestView: React.FC<NewRequestViewProps> = ({ onSuccessSubmit }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, activeUser } = useAuth();
+  const user = activeUser || currentUser || store.getProfiles()[0];
   const [products, setProducts] = useState<Product[]>(() => store.getProducts());
   const [costCenters, setCostCenters] = useState<CostCenter[]>(() => store.getCostCenters());
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
@@ -23,7 +24,7 @@ export const NewRequestView: React.FC<NewRequestViewProps> = ({ onSuccessSubmit 
   
   // Carrito de solicitud
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [costCenterId, setCostCenterId] = useState(currentUser.cost_center_id || 'CC-101');
+  const [costCenterId, setCostCenterId] = useState(user.cost_center_id || 'CC-101');
   const [workOrder, setWorkOrder] = useState('');
   const [reason, setReason] = useState('');
   const [priority, setPriority] = useState<'Normal' | 'Urgente'>('Normal');
@@ -109,9 +110,9 @@ export const NewRequestView: React.FC<NewRequestViewProps> = ({ onSuccessSubmit 
     }));
 
     const newReq = store.createRequest({
-      technician_id: currentUser.id,
-      technician_name: currentUser.name,
-      technician_rut: currentUser.rut,
+      technician_id: user.id,
+      technician_name: user.name,
+      technician_rut: user.rut,
       cost_center_id: costCenterId,
       work_order: workOrder.trim() || undefined,
       reason: reason.trim(),
@@ -154,7 +155,7 @@ export const NewRequestView: React.FC<NewRequestViewProps> = ({ onSuccessSubmit 
         <div className="flex items-center gap-2">
           <span className="text-calibri-normal text-slate-500">Técnico solicitante:</span>
           <span className="bg-slate-100 border border-slate-300 px-2 py-1 rounded text-calibri-normal font-bold text-slate-800">
-            {currentUser.name}
+            {user.name}
           </span>
         </div>
       </div>
