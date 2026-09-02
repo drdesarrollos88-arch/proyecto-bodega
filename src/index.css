@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   TIPOGRAFÍA ESTRICTA CORPORATIVA CALIBRI
+   Texto Normal: 10pt (13.33px)
+   Títulos / Encabezados: 12pt (16px) en Negrita
+   ========================================================================== */
+
+:root {
+  --font-family-base: 'Calibri', 'Candara', 'Segoe', 'Segoe UI', 'Optima', 'Arial', sans-serif;
+  --font-size-normal: 10pt;
+  --font-size-title: 12pt;
+}
+
+html, body {
+  font-family: var(--font-family-base) !important;
+  font-size: var(--font-size-normal) !important;
+  line-height: 1.45;
+  color: #1e293b;
+  background-color: #f8fafc;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Todos los textos normales por defecto a 10pt */
+p, span, div, label, input, select, textarea, button, td, li, a {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-normal);
+}
+
+/* Títulos y encabezados estrictamente a 12pt con peso visual jerárquico */
+h1, h2, h3, h4, h5, h6, .text-title, .heading-title {
+  font-family: var(--font-family-base) !important;
+  font-size: var(--font-size-title) !important;
+  font-weight: 700 !important;
+  line-height: 1.35;
+  color: #0f172a;
+}
+
+/* Clases de utilidad específicas para mantener la regla exacta */
+.text-calibri-normal {
+  font-family: var(--font-family-base) !important;
+  font-size: 10pt !important;
+}
+
+.text-calibri-title {
+  font-family: var(--font-family-base) !important;
+  font-size: 12pt !important;
+  font-weight: 700 !important;
+}
+
+/* Área táctil optimizada para teléfonos móviles */
+.touch-target {
+  min-height: 42px;
+  min-width: 42px;
+}
+
+/* Scrollbars limpios estilo corporativo */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Modo de impresión para Actas de Entrega */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+}
