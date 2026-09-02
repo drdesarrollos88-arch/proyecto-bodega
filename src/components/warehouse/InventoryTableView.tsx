@@ -12,7 +12,10 @@ import {
   ArrowDownCircle, 
   PlusCircle, 
   ShoppingCart, 
-  X 
+  X,
+  Check,
+  Tag,
+  Ruler
 } from 'lucide-react';
 import { Badge } from '../common/Badge';
 
@@ -36,24 +39,44 @@ export const InventoryTableView: React.FC<InventoryTableViewProps> = ({ onGoToPu
   const [newSku, setNewSku] = useState('');
   const [newName, setNewName] = useState('');
   const [newCategory, setNewCategory] = useState<ProductCategory>('EPP');
+  const [customCategoryInput, setCustomCategoryInput] = useState('');
+  const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
+  const [newSize, setNewSize] = useState('');
   const [newUnit, setNewUnit] = useState('unidad');
   const [newStock, setNewStock] = useState(10);
   const [newMinStock, setNewMinStock] = useState(5);
   const [newPrice, setNewPrice] = useState(10000);
   const [newLocation, setNewLocation] = useState('Pasillo 1 - Estante A1');
 
+  // Categorías personalizadas registradas
+  const [customCategories, setCustomCategories] = useState<string[]>(() => store.getCustomCategories());
+
   useEffect(() => {
     return store.subscribe(() => {
       setProducts(store.getProducts());
+      setCustomCategories(store.getCustomCategories());
     });
   }, []);
 
+  const matchingCategories = customCategories.filter(
+    (c) =>
+      c.toLowerCase().includes(customCategoryInput.toLowerCase().trim()) &&
+      c.toLowerCase() !== 'otros'
+  );
+
   const filteredProducts = products.filter((p) => {
-    const matchesCategory = selectedCategory === 'todos' || p.category === selectedCategory;
+    const matchesCategory =
+      selectedCategory === 'todos' ||
+      p.category === selectedCategory ||
+      p.custom_category === selectedCategory;
+
     const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.size && p.size.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (p.custom_category && p.custom_category.toLowerCase().includes(searchQuery.toLowerCase())) ||
       p.location.toLowerCase().includes(searchQuery.toLowerCase());
+
     const matchesCritical = !onlyCritical || p.current_stock <= p.min_stock;
     return matchesCategory && matchesSearch && matchesCritical;
   });
@@ -62,10 +85,19 @@ export const InventoryTableView: React.FC<InventoryTableViewProps> = ({ onGoToPu
     e.preventDefault();
     if (!newSku || !newName) return;
 
+    const isOther = newCategory === 'Otros';
+    const finalCategoryName = isOther && customCategoryInput.trim() ? customCategoryInput.trim() : newCategory;
+
+    if (isOther && customCategoryInput.trim()) {
+      store.saveCustomCategory(customCategoryInput.trim());
+    }
+
     store.addProduct({
       sku: newSku.toUpperCase().trim(),
       name: newName.trim(),
-      category: newCategory,
+      category: finalCategoryName,
+      custom_category: isOther ? customCategoryInput.trim() : undefined,
+      size: newSize.trim() || undefined,
       unit: newUnit.trim(),
       current_stock: Number(newStock),
       min_stock: Number(newMinStock),
@@ -76,6 +108,12 @@ export const InventoryTableView: React.FC<InventoryTableViewProps> = ({ onGoToPu
     setShowAddModal(false);
     setNewSku('');
     setNewName('');
+    setNewCategory('EPP');
+    setCustomCategoryInput('');
+    setNewSize('');
+    setNewStock(10);
+    setNewMinStock(5);
+    setNewPrice(10000);
   };
 
   const handleAdjustStockSubmit = (e: React.FormEvent) => {
@@ -151,6 +189,7 @@ export const InventoryTableView: React.FC<InventoryTableViewProps> = ({ onGoToPu
             { id: 'EPP', label: 'EPP' },
             { id: 'Herramientas Menores', label: 'Herramientas Menores' },
             { id: 'Artículos de Oficina', label: 'Artículos de Oficina' },
+            ...customCategories.map((c) => ({ id: c, label: c })),
             { id: 'Otros', label: 'Otros Insumos' },
           ].map((c) => (
             <button
@@ -198,8 +237,17 @@ export const InventoryTableView: React.FC<InventoryTableViewProps> = ({ onGoToPu
                     }`}
                   >
                     <td className="p-2.5 font-mono text-xs font-bold text-sky-800">{prod.sku}</td>
-                    <td className="p-2.5 font-medium text-slate-900">{prod.name}</td>
-                    <td className="p-2.5 text-slate-600 text-xs">{prod.category}</td>
+                    <td className="p-2.5 font-medium text-slate-900">
+                      {prod.name}
+                      {prod.size && (
+                        <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[11px] font-bold bg-sky-100 text-sky-900 border border-sky-300">
+                          <Ruler className="w-3 h-3 text-sky-700" /> Talla: {prod.size}
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-2.5 text-slate-600 text-xs font-semibold">
+                      {prod.custom_category || prod.category}
+                    </td>
                     <td className="p-2.5 text-center font-bold text-calibri-title text-slate-900">
                       {prod.current_stock} <span className="text-xs font-normal text-slate-500">{prod.unit}</span>
                     </td>
@@ -349,16 +397,98 @@ export const InventoryTableView: React.FC<InventoryTableViewProps> = ({ onGoToPu
                   </label>
                   <select
                     value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value as ProductCategory)}
+                    onChange={(e) => {
+                      const val = e.target.value as ProductCategory;
+                      setNewCategory(val);
+                      if (val !== 'Otros') {
+                        setCustomCategoryInput('');
+                        setShowCategorySuggestions(false);
+                      }
+                    }}
                     className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-calibri-normal bg-white"
                   >
                     <option value="EPP">EPP</option>
                     <option value="Herramientas Menores">Herramientas Menores</option>
                     <option value="Artículos de Oficina">Artículos de Oficina</option>
-                    <option value="Otros">Otros</option>
+                    {customCategories
+                      .filter((c) => !['EPP', 'Herramientas Menores', 'Artículos de Oficina', 'Otros'].includes(c))
+                      .map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    <option value="Otros">Otros (Especificar con Buscador)</option>
                   </select>
                 </div>
               </div>
+
+              {/* Buscador y Especificación de Categoría "Otros" */}
+              {newCategory === 'Otros' && (
+                <div className="p-3 bg-sky-50 border-2 border-sky-300 rounded-lg space-y-2 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-sky-950 flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5 text-sky-700" />
+                      Especificar a qué se refiere la categoría "Otros": *
+                    </label>
+                    <span className="text-[10px] bg-sky-200 text-sky-900 px-2 py-0.5 rounded font-bold">
+                      Buscador de Referencia Activo
+                    </span>
+                  </div>
+
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-2.5 top-2.5 text-sky-600" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="Escribe para buscar o definir categoría (ej: Ferretería, Cables, Pinturas...)"
+                      value={customCategoryInput}
+                      onChange={(e) => {
+                        setCustomCategoryInput(e.target.value);
+                        setShowCategorySuggestions(true);
+                      }}
+                      onFocus={() => setShowCategorySuggestions(true)}
+                      className="w-full pl-8 pr-3 py-1.5 border border-sky-300 rounded text-calibri-normal text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
+                    />
+                  </div>
+
+                  {/* Resultados sugeridos del buscador en vivo */}
+                  {showCategorySuggestions && customCategoryInput.trim() && (
+                    <div className="bg-white border border-sky-200 rounded shadow-md overflow-hidden text-xs max-h-36 overflow-y-auto">
+                      {matchingCategories.length > 0 ? (
+                        <div>
+                          <div className="px-2.5 py-1 bg-sky-100/70 text-[10px] font-bold text-sky-900 uppercase flex items-center justify-between">
+                            <span>Coincidencias guardadas en el sistema:</span>
+                            <span className="text-slate-500 font-normal">Haz clic para reutilizarla</span>
+                          </div>
+                          {matchingCategories.map((cat) => (
+                            <button
+                              key={cat}
+                              type="button"
+                              onClick={() => {
+                                setCustomCategoryInput(cat);
+                                setShowCategorySuggestions(false);
+                              }}
+                              className="w-full text-left px-3 py-1.5 hover:bg-sky-50 text-slate-800 flex items-center justify-between border-b border-slate-100 last:border-none transition-colors"
+                            >
+                              <span className="font-semibold">{cat}</span>
+                              <span className="text-[10px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded font-bold">
+                                Seleccionar
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-2 text-emerald-800 bg-emerald-50 text-[11px] flex items-center gap-1.5">
+                          <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                          <span>
+                            No hay coincidencias previas. Se creará <strong>"{customCategoryInput.trim()}"</strong> y quedará guardada como referencia para futuros artículos.
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label className="block text-calibri-normal font-bold text-slate-700 mb-1">
@@ -372,6 +502,41 @@ export const InventoryTableView: React.FC<InventoryTableViewProps> = ({ onGoToPu
                   onChange={(e) => setNewName(e.target.value)}
                   className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-calibri-normal"
                 />
+              </div>
+
+              {/* Selector de Talla / Calzado / Medida */}
+              <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-calibri-normal font-bold text-slate-700 text-xs flex items-center gap-1">
+                    <Ruler className="w-3.5 h-3.5 text-sky-700" />
+                    Talla / Medida / Calzado (Para ropa o zapatos):
+                  </label>
+                  <span className="text-[10px] text-slate-500 font-medium">Opcional</span>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Ej: S, M, L, XL, 41, 42, Estándar..."
+                  value={newSize}
+                  onChange={(e) => setNewSize(e.target.value)}
+                  className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-calibri-normal text-xs bg-white font-medium"
+                />
+                <div className="flex flex-wrap items-center gap-1 pt-1">
+                  <span className="text-[10px] text-slate-400 font-bold mr-1">Tallas frecuentes:</span>
+                  {['S', 'M', 'L', 'XL', 'XXL', '38', '39', '40', '41', '42', '43', '44', 'Estándar', 'N/A'].map((sz) => (
+                    <button
+                      key={sz}
+                      type="button"
+                      onClick={() => setNewSize(sz === newSize ? '' : sz)}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors ${
+                        newSize === sz
+                          ? 'bg-sky-700 text-white border-sky-800 shadow-2xs'
+                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                      }`}
+                    >
+                      {sz}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2">

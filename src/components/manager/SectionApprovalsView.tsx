@@ -235,3 +235,4 @@ export const SectionApprovalsView: React.FC = () => {
     </div>
   );
 };
+

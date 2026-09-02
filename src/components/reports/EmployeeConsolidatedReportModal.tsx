@@ -320,3 +320,4 @@ export const EmployeeConsolidatedReportModal: React.FC<EmployeeConsolidatedRepor
     </div>
   );
 };
+

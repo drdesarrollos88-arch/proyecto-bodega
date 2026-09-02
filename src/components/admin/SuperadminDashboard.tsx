@@ -18,7 +18,9 @@ import {
   Check, 
   X, 
   Search, 
-  Layers 
+  Layers,
+  Ruler,
+  Tag
 } from 'lucide-react';
 import { Badge } from '../common/Badge';
 
@@ -27,6 +29,7 @@ export const SuperadminDashboard: React.FC = () => {
   const [users, setUsers] = useState<UserProfile[]>(allUsers);
   const [costCenters, setCostCenters] = useState<CostCenter[]>(() => store.getCostCenters());
   const [products, setProducts] = useState<Product[]>(() => store.getProducts());
+  const [customCategories, setCustomCategories] = useState<string[]>(() => store.getCustomCategories());
 
   const [activeTab, setActiveTab] = useState<'usuarios' | 'centros_costo' | 'catalogo' | 'sistema'>('usuarios');
   const [search, setSearch] = useState('');
@@ -57,6 +60,9 @@ export const SuperadminDashboard: React.FC = () => {
   const [prodSku, setProdSku] = useState('');
   const [prodName, setProdName] = useState('');
   const [prodCategory, setProdCategory] = useState<ProductCategory>('EPP');
+  const [prodCustomCategory, setProdCustomCategory] = useState('');
+  const [prodSize, setProdSize] = useState('');
+  const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
   const [prodUnit, setProdUnit] = useState('unidad');
   const [prodStock, setProdStock] = useState(10);
   const [prodMinStock, setProdMinStock] = useState(5);
@@ -200,6 +206,8 @@ export const SuperadminDashboard: React.FC = () => {
       setProdSku(p.sku);
       setProdName(p.name);
       setProdCategory(p.category);
+      setProdCustomCategory(p.custom_category || '');
+      setProdSize(p.size || '');
       setProdUnit(p.unit);
       setProdStock(p.current_stock);
       setProdMinStock(p.min_stock);
@@ -210,12 +218,15 @@ export const SuperadminDashboard: React.FC = () => {
       setProdSku('');
       setProdName('');
       setProdCategory('EPP');
+      setProdCustomCategory('');
+      setProdSize('');
       setProdUnit('unidad');
       setProdStock(10);
       setProdMinStock(5);
       setProdPrice(5000);
       setProdLocation('Pasillo 1 - Estante A1');
     }
+    setShowCategorySuggestions(false);
     setShowProductModal(true);
   };
 
@@ -223,11 +234,20 @@ export const SuperadminDashboard: React.FC = () => {
     e.preventDefault();
     if (!prodSku || !prodName) return;
 
+    const isOther = prodCategory === 'Otros';
+    const finalCategoryName = isOther && prodCustomCategory.trim() ? prodCustomCategory.trim() : prodCategory;
+
+    if (isOther && prodCustomCategory.trim()) {
+      store.saveCustomCategory(prodCustomCategory.trim());
+    }
+
     if (editingProduct) {
       store.updateProduct(editingProduct.id, {
         sku: prodSku.trim().toUpperCase(),
         name: prodName.trim(),
-        category: prodCategory,
+        category: finalCategoryName,
+        custom_category: isOther ? prodCustomCategory.trim() : undefined,
+        size: prodSize.trim() || undefined,
         unit: prodUnit.trim(),
         current_stock: Number(prodStock),
         min_stock: Number(prodMinStock),
@@ -239,7 +259,9 @@ export const SuperadminDashboard: React.FC = () => {
       store.addProduct({
         sku: prodSku.trim().toUpperCase(),
         name: prodName.trim(),
-        category: prodCategory,
+        category: finalCategoryName,
+        custom_category: isOther ? prodCustomCategory.trim() : undefined,
+        size: prodSize.trim() || undefined,
         unit: prodUnit.trim(),
         current_stock: Number(prodStock),
         min_stock: Number(prodMinStock),
@@ -533,8 +555,15 @@ export const SuperadminDashboard: React.FC = () => {
                   {products.map((p) => (
                     <tr key={p.id} className="hover:bg-slate-50">
                       <td className="p-2.5 font-mono text-xs font-bold text-sky-800">{p.sku}</td>
-                      <td className="p-2.5 font-bold text-slate-800">{p.name}</td>
-                      <td className="p-2.5 text-slate-600 text-xs">{p.category}</td>
+                      <td className="p-2.5 font-bold text-slate-800">
+                        {p.name}
+                        {p.size && (
+                          <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[11px] font-bold bg-sky-100 text-sky-900 border border-sky-300">
+                            <Ruler className="w-3 h-3 text-sky-700" /> Talla: {p.size}
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-2.5 text-slate-600 text-xs font-semibold">{p.custom_category || p.category}</td>
                       <td className="p-2.5 text-center font-bold">{p.current_stock} {p.unit}</td>
                       <td className="p-2.5 text-center text-xs text-slate-500">{p.min_stock}</td>
                       <td className="p-2.5 text-right font-semibold text-slate-800">
@@ -830,16 +859,108 @@ export const SuperadminDashboard: React.FC = () => {
                   </label>
                   <select
                     value={prodCategory}
-                    onChange={(e) => setProdCategory(e.target.value as ProductCategory)}
+                    onChange={(e) => {
+                      const val = e.target.value as ProductCategory;
+                      setProdCategory(val);
+                      if (val !== 'Otros') {
+                        setProdCustomCategory('');
+                        setShowCategorySuggestions(false);
+                      }
+                    }}
                     className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-calibri-normal bg-white"
                   >
                     <option value="EPP">EPP</option>
                     <option value="Herramientas Menores">Herramientas Menores</option>
                     <option value="Artículos de Oficina">Artículos de Oficina</option>
-                    <option value="Otros">Otros</option>
+                    {customCategories
+                      .filter((c) => !['EPP', 'Herramientas Menores', 'Artículos de Oficina', 'Otros'].includes(c))
+                      .map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    <option value="Otros">Otros (Especificar con Buscador)</option>
                   </select>
                 </div>
               </div>
+
+              {/* Buscador y Especificación de Categoría "Otros" */}
+              {prodCategory === 'Otros' && (
+                <div className="p-3 bg-sky-50 border-2 border-sky-300 rounded-lg space-y-2 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-sky-950 flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5 text-sky-700" />
+                      Especificar categoría para "Otros": *
+                    </label>
+                    <span className="text-[10px] bg-sky-200 text-sky-900 px-2 py-0.5 rounded font-bold">
+                      Buscador Activo
+                    </span>
+                  </div>
+
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-2.5 top-2.5 text-sky-600" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="Escribe para buscar o ingresar nueva categoría..."
+                      value={prodCustomCategory}
+                      onChange={(e) => {
+                        setProdCustomCategory(e.target.value);
+                        setShowCategorySuggestions(true);
+                      }}
+                      onFocus={() => setShowCategorySuggestions(true)}
+                      className="w-full pl-8 pr-3 py-1.5 border border-sky-300 rounded text-calibri-normal text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
+                    />
+                  </div>
+
+                  {/* Resultados sugeridos del buscador en vivo */}
+                  {showCategorySuggestions && prodCustomCategory.trim() && (
+                    <div className="bg-white border border-sky-200 rounded shadow-md overflow-hidden text-xs max-h-36 overflow-y-auto">
+                      {customCategories.filter(
+                        (c) =>
+                          c.toLowerCase().includes(prodCustomCategory.toLowerCase().trim()) &&
+                          c.toLowerCase() !== 'otros'
+                      ).length > 0 ? (
+                        <div>
+                          <div className="px-2.5 py-1 bg-sky-100/70 text-[10px] font-bold text-sky-900 uppercase flex items-center justify-between">
+                            <span>Coincidencias guardadas en el sistema:</span>
+                            <span className="text-slate-500 font-normal">Clic para reutilizar</span>
+                          </div>
+                          {customCategories
+                            .filter(
+                              (c) =>
+                                c.toLowerCase().includes(prodCustomCategory.toLowerCase().trim()) &&
+                                c.toLowerCase() !== 'otros'
+                            )
+                            .map((cat) => (
+                              <button
+                                key={cat}
+                                type="button"
+                                onClick={() => {
+                                  setProdCustomCategory(cat);
+                                  setShowCategorySuggestions(false);
+                                }}
+                                className="w-full text-left px-3 py-1.5 hover:bg-sky-50 text-slate-800 flex items-center justify-between border-b border-slate-100 last:border-none transition-colors"
+                              >
+                                <span className="font-semibold">{cat}</span>
+                                <span className="text-[10px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded font-bold">
+                                  Seleccionar
+                                </span>
+                              </button>
+                            ))}
+                        </div>
+                      ) : (
+                        <div className="p-2 text-emerald-800 bg-emerald-50 text-[11px] flex items-center gap-1.5">
+                          <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                          <span>
+                            No hay coincidencias previas. Se creará <strong>"{prodCustomCategory.trim()}"</strong> y quedará guardada como referencia para futuros artículos.
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label className="block text-calibri-normal font-bold text-slate-700 mb-1">
@@ -852,6 +973,41 @@ export const SuperadminDashboard: React.FC = () => {
                   onChange={(e) => setProdName(e.target.value)}
                   className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-calibri-normal"
                 />
+              </div>
+
+              {/* Selector de Talla / Calzado / Medida */}
+              <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-calibri-normal font-bold text-slate-700 text-xs flex items-center gap-1">
+                    <Ruler className="w-3.5 h-3.5 text-sky-700" />
+                    Talla / Medida / Calzado (Para ropa o zapatos):
+                  </label>
+                  <span className="text-[10px] text-slate-500 font-medium">Opcional</span>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Ej: S, M, L, XL, 41, 42, Estándar..."
+                  value={prodSize}
+                  onChange={(e) => setProdSize(e.target.value)}
+                  className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-calibri-normal text-xs bg-white font-medium"
+                />
+                <div className="flex flex-wrap items-center gap-1 pt-1">
+                  <span className="text-[10px] text-slate-400 font-bold mr-1">Tallas frecuentes:</span>
+                  {['S', 'M', 'L', 'XL', 'XXL', '38', '39', '40', '41', '42', '43', '44', 'Estándar', 'N/A'].map((sz) => (
+                    <button
+                      key={sz}
+                      type="button"
+                      onClick={() => setProdSize(sz === prodSize ? '' : sz)}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors ${
+                        prodSize === sz
+                          ? 'bg-sky-700 text-white border-sky-800 shadow-2xs'
+                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                      }`}
+                    >
+                      {sz}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2">

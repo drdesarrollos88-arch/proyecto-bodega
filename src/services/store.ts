@@ -634,6 +634,45 @@ class WarehouseStore {
     }
   }
 
+  public getCustomCategories(): string[] {
+    const products = this.getProducts();
+    const categoriesSet = new Set<string>();
+    const defaultCats = ['Artículos de Oficina', 'EPP', 'Herramientas Menores', 'Otros'];
+    
+    // Categorías base sugeridas útiles para telecomunicaciones
+    ['Ferretería y Fijaciones', 'Cables y Conectores', 'Pinturas y Químicos', 'Redes e Informática', 'Seguridad Vial y Señalética'].forEach(c => categoriesSet.add(c));
+
+    products.forEach((p) => {
+      if (p.custom_category && p.custom_category.trim()) {
+        categoriesSet.add(p.custom_category.trim());
+      }
+      if (p.category && !defaultCats.includes(p.category)) {
+        categoriesSet.add(p.category.trim());
+      }
+    });
+
+    const saved = localStorage.getItem('bodega_custom_categories_v1');
+    if (saved) {
+      try {
+        const arr: string[] = JSON.parse(saved);
+        arr.forEach((c) => categoriesSet.add(c));
+      } catch (e) {}
+    }
+
+    return Array.from(categoriesSet).sort();
+  }
+
+  public saveCustomCategory(categoryName: string): void {
+    const cleaned = categoryName.trim();
+    if (!cleaned) return;
+    const cats = this.getCustomCategories();
+    if (!cats.includes(cleaned)) {
+      cats.push(cleaned);
+      localStorage.setItem('bodega_custom_categories_v1', JSON.stringify(cats));
+      this.notify();
+    }
+  }
+
   // --- CENTROS DE COSTO CRUD ---
   public getCostCenters(): CostCenter[] {
     const raw = localStorage.getItem(STORAGE_KEYS.COST_CENTERS);

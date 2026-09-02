@@ -125,6 +125,7 @@ export const TechnicianPortalView: React.FC<TechnicianPortalViewProps> = ({ onNa
       product_id: c.product.id,
       product_name: c.product.name,
       product_sku: c.product.sku,
+      size: c.product.size,
       quantity: c.quantity,
       unit_price: c.product.unit_price,
       total_price: c.product.unit_price * c.quantity,
@@ -167,11 +168,13 @@ export const TechnicianPortalView: React.FC<TechnicianPortalViewProps> = ({ onNa
     setTimeout(() => setSuccessToast(null), 4500);
   };
 
+  const customCategories = store.getCustomCategories();
   const categories: { id: string; label: string }[] = [
     { id: 'todos', label: 'Todos los Artículos' },
     { id: 'EPP', label: 'EPP y Seguridad' },
     { id: 'Herramientas Menores', label: 'Herramientas' },
     { id: 'Artículos de Oficina', label: 'Oficina' },
+    ...customCategories.map((c) => ({ id: c, label: c })),
     { id: 'Otros', label: 'Otros Insumos' },
   ];
 
@@ -429,6 +432,11 @@ export const TechnicianPortalView: React.FC<TechnicianPortalViewProps> = ({ onNa
                       <strong className="text-calibri-normal text-slate-900 truncate block">
                         {p.name}
                       </strong>
+                      {p.size && (
+                        <span className="px-1.5 py-0.2 rounded bg-sky-100 text-sky-900 border border-sky-300 font-bold text-[10px] whitespace-nowrap">
+                          Talla: {p.size}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
                       <span>Cat: {p.category}</span>

@@ -2,13 +2,16 @@ export type ProductCategory =
   | 'Artículos de Oficina' 
   | 'EPP' 
   | 'Herramientas Menores' 
-  | 'Otros';
+  | 'Otros'
+  | string;
 
 export interface Product {
   id: string;
   sku: string;
   name: string;
   category: ProductCategory;
+  custom_category?: string; // Especificación cuando es "Otros" o categoría personalizada
+  size?: string; // Talla de ropa, calzado o medida (ej: S, M, L, XL, 41, 42, etc.)
   unit: string;
   current_stock: number;
   min_stock: number;
@@ -54,6 +57,7 @@ export interface RequestItem {
   product_id: string;
   product_name: string;
   product_sku: string;
+  size?: string;
   quantity: number;
   delivered_quantity?: number;
   unit_price: number;

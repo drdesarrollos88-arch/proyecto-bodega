@@ -55,3 +55,4 @@ export function isValidRut(rut: string): boolean {
 
   return dv === dvCalculado;
 }
+
