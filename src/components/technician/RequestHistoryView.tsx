@@ -219,3 +219,4 @@ export const RequestHistoryView: React.FC<RequestHistoryViewProps> = () => {
     </div>
   );
 };
+

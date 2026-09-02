@@ -188,3 +188,4 @@ INSERT INTO request_items (request_id, product_id, product_name, product_sku, qu
 SELECT 'SOL-2026-0002', id, name, sku, 2, 0, unit_price, (2 * unit_price)
 FROM products WHERE sku = 'OTR-004'
 ON CONFLICT DO NOTHING;
+

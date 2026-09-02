@@ -116,3 +116,4 @@ export const MyReceiptsView: React.FC = () => {
     </div>
   );
 };
+

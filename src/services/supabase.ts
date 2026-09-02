@@ -45,3 +45,4 @@ export const getSupabaseConfig = () => {
     isConnected: isSupabaseConfigured()
   };
 };
+

@@ -147,3 +147,4 @@ export const AuditRecordsView: React.FC = () => {
     </div>
   );
 };
+

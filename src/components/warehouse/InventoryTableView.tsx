@@ -459,3 +459,4 @@ export const InventoryTableView: React.FC<InventoryTableViewProps> = ({ onGoToPu
     </div>
   );
 };
+

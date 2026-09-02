@@ -140,3 +140,4 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ onOpenSupabaseModal 
     </div>
   );
 };
+
