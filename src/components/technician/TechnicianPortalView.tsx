@@ -18,7 +18,8 @@ import {
   FileCheck,
   ChevronRight,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Boxes
 } from 'lucide-react';
 import { Badge } from '../common/Badge';
 
@@ -55,10 +56,13 @@ export const TechnicianPortalView: React.FC<TechnicianPortalViewProps> = ({ onNa
   // Solicitudes del técnico
   const myRequests = requests.filter((r) => r.technician_id === user.id || r.technician_rut === user.rut);
 
-  // 1. Notificaciones urgentes: Pedidos autorizados listos para ir a retirar a bodega
-  const readyToPickUp = myRequests.filter((r) => r.status === 'aprobada');
+  // 1. Notificaciones urgentes: Pedidos preparados por bodega listos para retiro inmediato
+  const readyToPickUp = myRequests.filter((r) => r.status === 'lista_retiro');
 
-  // 2. Pedidos en revisión
+  // 2. Pedidos autorizados por supervisor pero que bodega está preparando
+  const approvedWaitingPrep = myRequests.filter((r) => r.status === 'aprobada');
+
+  // 3. Pedidos en revisión inicial de supervisor
   const pendingRequests = myRequests.filter((r) => r.status === 'pendiente');
 
   // Filtro de productos
@@ -126,21 +130,41 @@ export const TechnicianPortalView: React.FC<TechnicianPortalViewProps> = ({ onNa
       total_price: c.product.unit_price * c.quantity,
     }));
 
+    const isJefe = user.role === 'jefe_seccion';
+    const isStaff = user.role === 'supervisor' || user.role === 'bodeguero_admin';
+
     const newReq = store.createRequest({
       technician_id: user.id,
       technician_name: user.name,
       technician_rut: user.rut,
       cost_center_id: user.cost_center_id || 'CC-101',
       work_order: workOrder.trim() || undefined,
-      reason: reason.trim() || 'Trabajo en terreno',
+      reason: reason.trim() || (isStaff ? 'Insumos operativos solicitados por ' + user.name : 'Trabajo en terreno'),
       priority: 'Normal',
+      requested_by_role: user.role,
+      approver_role: isJefe ? 'jefe_seccion' : (isStaff ? 'jefe_seccion' : 'supervisor'),
       items,
     });
 
+    if (isJefe) {
+      // Auto-aprobación directa para el Jefe de Sección
+      store.updateRequestStatus(
+        newReq.id,
+        'aprobada',
+        user.id,
+        user.name,
+        'Auto-autorizado por Jefe de Sección'
+      );
+      setSuccessToast(`¡Solicitud ${newReq.id} auto-autorizada! Se envió a Bodega Central para su preparación.`);
+    } else if (isStaff) {
+      setSuccessToast(`¡Solicitud ${newReq.id} enviada al Jefe de Sección para su autorización!`);
+    } else {
+      setSuccessToast(`¡Solicitud ${newReq.id} enviada a tu supervisor! Te avisaremos apenas la autorice.`);
+    }
+
     setIsSubmitting(false);
     setCart([]);
-    setSuccessToast(`¡Solicitud ${newReq.id} enviada a tu supervisor! Te avisaremos apenas la autorice.`);
-    setTimeout(() => setSuccessToast(null), 4000);
+    setTimeout(() => setSuccessToast(null), 4500);
   };
 
   const categories: { id: string; label: string }[] = [
@@ -214,25 +238,72 @@ export const TechnicianPortalView: React.FC<TechnicianPortalViewProps> = ({ onNa
         </div>
       )}
 
-      {/* TARJETA 2: AUTORIZADOS PARA RETIRO EN BODEGA (SIEMPRE AGRUPADOS EN UNA SOLA TARJETA) */}
+      {/* TARJETA 2: EN PREPARACIÓN POR BODEGA (AUTORIZADO, ESPERANDO AVISO DEL BODEGUERO) */}
+      {approvedWaitingPrep.length > 0 && (
+        <div className="bg-sky-50 border-2 border-sky-300 text-sky-900 rounded-xl shadow-sm p-3.5 space-y-2.5">
+          <div className="flex items-center justify-between border-b border-sky-200 pb-2">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-full bg-sky-200 text-sky-900 animate-pulse">
+                <Boxes className="w-4 h-4" />
+              </span>
+              <div>
+                <h2 className="text-calibri-title text-sky-950 text-sm font-bold leading-none">
+                  En Preparación por Bodega ({approvedWaitingPrep.length} pedido{approvedWaitingPrep.length > 1 ? 's' : ''})
+                </h2>
+                <span className="text-calibri-normal text-sky-800 text-xs">
+                  Tu supervisor ya autorizó la solicitud. El personal de bodega está preparando tus artículos y te notificará apenas estén listos.
+                </span>
+              </div>
+            </div>
+            <span className="text-xs px-2 py-0.5 rounded bg-sky-200 text-sky-900 font-bold">
+              Preparando Materiales
+            </span>
+          </div>
+
+          <div className="space-y-1.5">
+            {approvedWaitingPrep.map((req) => (
+              <div
+                key={req.id}
+                className="bg-white p-2.5 rounded-lg border border-sky-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-1.5"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-sky-900">{req.id}</span>
+                    <span className="text-slate-400">•</span>
+                    <span className="text-slate-700 font-medium truncate">
+                      {req.items.map((i) => `${i.quantity}x ${i.product_name}`).join(', ')}
+                    </span>
+                  </div>
+                  <p className="text-slate-500 text-[11px] mt-0.5">
+                    Autorizado por {req.supervisor_name || 'Supervisor'} • Espera el aviso de bodega antes de acudir al mesón.
+                  </p>
+                </div>
+                <span className="text-slate-500 font-medium">⏳ Bodega Central</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* TARJETA 3: AUTORIZADOS Y PREPARADOS LISTOS PARA RETIRO EN MESÓN */}
       {readyToPickUp.length > 0 && (
-        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-4 rounded-xl shadow-md space-y-2.5">
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-4 rounded-xl shadow-md space-y-2.5 animate-pulse-subtle">
           <div className="flex items-center justify-between border-b border-emerald-500/60 pb-2">
             <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-full bg-white/20 text-white animate-bounce">
+              <span className="p-1.5 rounded-full bg-white text-emerald-800 font-bold shadow animate-bounce">
                 <Bell className="w-4 h-4" />
               </span>
               <div>
                 <h2 className="text-calibri-title text-white text-sm font-bold leading-none">
-                  Autorizado para Retiro en Bodega ({readyToPickUp.length} pedido{readyToPickUp.length > 1 ? 's' : ''})
+                  ¡Listos para Retiro en Mesón! ({readyToPickUp.length} pedido{readyToPickUp.length > 1 ? 's' : ''})
                 </h2>
                 <p className="text-calibri-normal text-emerald-100 text-xs mt-0.5">
-                  Stock revisado. Puedes acercarte a la Bodega Central para la entrega con firma táctil y foto.
+                  El personal de bodega ya preparó tus insumos. Puedes acercarte a retirar con tu firma digital.
                 </p>
               </div>
             </div>
-            <span className="hidden sm:inline-flex px-2.5 py-0.5 bg-white text-emerald-900 rounded-full text-xs font-bold">
-              Pase de Retiro Activo
+            <span className="px-2.5 py-0.5 bg-white text-emerald-900 rounded-full text-xs font-bold shadow-sm">
+              ✓ Disponible en Mesón
             </span>
           </div>
 
@@ -246,8 +317,13 @@ export const TechnicianPortalView: React.FC<TechnicianPortalViewProps> = ({ onNa
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-emerald-800">{req.id}</span>
                     <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold text-xs">
-                      Autorizado por {req.supervisor_name || 'Supervisor'}
+                      Preparado por {req.prepared_by_name || 'Personal de Bodega'}
                     </span>
+                    {req.ready_for_pickup_at && (
+                      <span className="text-slate-400 text-[11px]">
+                        ({new Date(req.ready_for_pickup_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+                      </span>
+                    )}
                   </div>
                   <div className="mt-1 text-slate-700 font-medium truncate">
                     <strong>Insumos:</strong> {req.items.map((i) => `${i.quantity}x ${i.product_name}`).join(', ')}
@@ -260,8 +336,8 @@ export const TechnicianPortalView: React.FC<TechnicianPortalViewProps> = ({ onNa
                 </div>
 
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="inline-flex items-center gap-1 text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded font-medium">
-                    <MapPin className="w-3.5 h-3.5 text-sky-700" /> Bodega Principal
+                  <span className="inline-flex items-center gap-1 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded font-bold">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-700" /> Mesón Bodega Principal
                   </span>
                 </div>
               </div>

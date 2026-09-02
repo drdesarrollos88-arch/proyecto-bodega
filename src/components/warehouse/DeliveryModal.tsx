@@ -26,8 +26,10 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
   const [validationError, setValidationError] = useState<string | null>(null);
 
   // Control de reposición (producto anterior)
-  const [returnStatus, setReturnStatus] = useState<'devuelto_danado' | 'extraviado' | 'sin_retorno_nuevo'>('devuelto_danado');
-  const [damagedPhotoData, setDamagedPhotoData] = useState<string>('');
+  const [returnStatus, setReturnStatus] = useState<'devuelto_danado' | 'extraviado' | 'sin_retorno_nuevo'>(
+    request?.damaged_photo_data ? 'devuelto_danado' : 'sin_retorno_nuevo'
+  );
+  const [damagedPhotoData, setDamagedPhotoData] = useState<string>(request?.damaged_photo_data || '');
   const [lossReason, setLossReason] = useState<string>('Extraviado en terreno durante maniobra de faena');
 
   // Cerrar modal con tecla Escape
@@ -53,15 +55,9 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
       return;
     }
 
-    // 2. Foto 1: Producto dañado (solo si aplica devolución por daño)
-    if (returnStatus === 'devuelto_danado' && !damagedPhotoData) {
-      setValidationError('Falta la FOTO 1: Debe capturar la fotografía del producto dañado recibido para darlo de baja.');
-      return;
-    }
-
-    // 3. Foto 2: Entrega de insumos nuevos (siempre requerida para respaldar lo que sale de bodega)
+    // 2. Foto de Entrega de insumos nuevos (respaldo de despacho de bodega)
     if (!photoData) {
-      setValidationError('Falta la FOTO DE ENTREGA: Debe capturar la fotografía de los insumos nuevos siendo entregados al técnico.');
+      setValidationError('Debe capturar la fotografía de los insumos nuevos siendo entregados al técnico en ventanilla.');
       return;
     }
 
@@ -250,28 +246,44 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
               </button>
             </div>
 
-            {/* Condicional: Si es Producto Dañado -> FOTO 1 (Del Daño) */}
+            {/* Condicional: Si es Producto Dañado */}
             {returnStatus === 'devuelto_danado' && (
               <div className="p-3 bg-amber-50/90 border-2 border-amber-400 rounded-lg space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-calibri-title text-amber-950 font-bold text-xs flex items-center gap-1.5">
                     <Camera className="w-4 h-4 text-amber-700" />
-                    FOTO 1: Fotografía del Producto Dañado a Dar de Baja: *
+                    Fotografía del Producto Dañado a Dar de Baja:
                   </label>
-                  {damagedPhotoData && (
-                    <span className="text-xs text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
-                      ✓ Foto 1 Registrada
-                    </span>
-                  )}
+                  <span className="text-xs text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+                    {damagedPhotoData ? '✓ Foto de Faena Registrada' : 'Pendiente'}
+                  </span>
                 </div>
-                <p className="text-xs text-amber-800">
-                  Enfoca exclusivamente el <strong>artículo deteriorado o quebrado</strong> que entrega el técnico para darlo de baja en bodega.
-                </p>
-                <CameraCapture
-                  title="Foto 1: Producto Deteriorado (Baja Física)"
-                  subtitle="Enfoca el producto viejo/roto para justificar la baja"
-                  onCapture={(url) => setDamagedPhotoData(url)}
-                />
+
+                {damagedPhotoData ? (
+                  <div className="space-y-2">
+                    <div className="w-full h-36 bg-slate-900 rounded border border-amber-300 flex items-center justify-center overflow-hidden">
+                      <img
+                        src={damagedPhotoData}
+                        alt="Producto dañado en terreno"
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    </div>
+                    <p className="text-xs text-amber-900 bg-amber-100/70 p-1.5 rounded border border-amber-200">
+                      ✓ Fotografía tomada en terreno por el <strong>Supervisor ({request.supervisor_name || 'Supervisor'})</strong>. La baja física ya se encuentra debidamente justificada.
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-xs text-amber-800 mb-1.5">
+                      No se adjuntó foto desde terreno. Captura el artículo devuelto por el técnico:
+                    </p>
+                    <CameraCapture
+                      title="Foto de Producto Dañado"
+                      subtitle="Enfoca el artículo roto recibido en ventanilla"
+                      onCapture={(url) => setDamagedPhotoData(url)}
+                    />
+                  </div>
+                )}
               </div>
             )}
 

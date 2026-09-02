@@ -2,14 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { DeliveryRecord } from '../../types';
 import { store } from '../../services/store';
 import { useAuth } from '../../context/AuthContext';
-import { FileText, Eye, Calendar, DollarSign, ShieldCheck, User } from 'lucide-react';
+import { FileText, Eye, Calendar, DollarSign, ShieldCheck, User, FileSpreadsheet } from 'lucide-react';
 import { DeliveryReceiptModal } from '../reports/DeliveryReceiptModal';
+import { EmployeeConsolidatedReportModal } from '../reports/EmployeeConsolidatedReportModal';
 
 export const MyReceiptsView: React.FC = () => {
   const { currentUser, activeUser } = useAuth();
   const user = activeUser || currentUser || store.getProfiles()[0];
   const [deliveries, setDeliveries] = useState<DeliveryRecord[]>(() => store.getDeliveries());
   const [selectedDelivery, setSelectedDelivery] = useState<DeliveryRecord | null>(null);
+  const [showConsolidatedModal, setShowConsolidatedModal] = useState(false);
 
   useEffect(() => {
     return store.subscribe(() => {
@@ -30,12 +32,22 @@ export const MyReceiptsView: React.FC = () => {
             Historial de Actas y Comprobantes de Retiro
           </h1>
           <p className="text-calibri-normal text-slate-600">
-            Comprobantes oficiales de entrega firmados digitalmente con fotografía de respaldo.
+            Comprobantes oficiales individuales y tu acta consolidada histórica de materiales.
           </p>
         </div>
-        <span className="text-calibri-normal bg-sky-50 text-sky-800 border border-sky-200 px-3 py-1 rounded font-bold">
-          {myDeliveries.length} actas registradas
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowConsolidatedModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-calibri-normal font-bold shadow-sm transition-colors touch-target"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-200" />
+            Mi Acta Consolidada
+          </button>
+          <span className="text-calibri-normal bg-sky-50 text-sky-800 border border-sky-200 px-3 py-1 rounded font-bold">
+            {myDeliveries.length} actas registradas
+          </span>
+        </div>
       </div>
 
       {myDeliveries.length === 0 ? (
@@ -109,11 +121,19 @@ export const MyReceiptsView: React.FC = () => {
         </div>
       )}
 
-      {/* Modal de Acta Imprimible */}
+      {/* Modal de Acta Imprimible Individual */}
       <DeliveryReceiptModal
         delivery={selectedDelivery}
         onClose={() => setSelectedDelivery(null)}
       />
+
+      {/* Modal de Mi Acta Consolidada Histórica (Sin Fotos) */}
+      {showConsolidatedModal && (
+        <EmployeeConsolidatedReportModal
+          initialEmployeeRut={user.rut}
+          onClose={() => setShowConsolidatedModal(false)}
+        />
+      )}
     </div>
   );
 };

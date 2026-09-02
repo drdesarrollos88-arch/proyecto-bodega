@@ -1,5 +1,6 @@
 import { Product, CostCenter, UserProfile, WarehouseRequest, DeliveryRecord, PurchaseOrder } from '../types';
 import { getSupabase } from './supabase';
+import { formatRut } from '../utils/rut';
 
 const STORAGE_KEYS = {
   PRODUCTS: 'bodega_products_v1',
@@ -695,9 +696,10 @@ class WarehouseStore {
 
   public addUser(user: Omit<UserProfile, 'id'>): UserProfile {
     const profiles = this.getProfiles();
-    const newId = 'USR-' + String(profiles.length).padStart(2, '0');
+    const newId = 'USR-' + String(profiles.length + 1).padStart(2, '0');
     const newUser: UserProfile = {
       ...user,
+      rut: formatRut(user.rut),
       id: newId,
     };
     profiles.push(newUser);
@@ -712,14 +714,44 @@ class WarehouseStore {
     return newUser;
   }
 
+  public addUsersBulk(users: Omit<UserProfile, 'id'>[]): UserProfile[] {
+    const profiles = this.getProfiles();
+    const createdUsers: UserProfile[] = [];
+
+    users.forEach((u, index) => {
+      const newId = 'USR-' + String(profiles.length + index + 1).padStart(2, '0');
+      const newUser: UserProfile = {
+        ...u,
+        rut: formatRut(u.rut),
+        id: newId,
+      };
+      profiles.push(newUser);
+      createdUsers.push(newUser);
+    });
+
+    localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(profiles));
+    this.notify();
+
+    const client = getSupabase();
+    if (client && createdUsers.length > 0) {
+      client.from('profiles').insert(createdUsers).then();
+    }
+
+    return createdUsers;
+  }
+
   public updateUser(id: string, updates: Partial<UserProfile>): void {
-    const profiles = this.getProfiles().map((p) => (p.id === id ? { ...p, ...updates } : p));
+    const formattedUpdates = {
+      ...updates,
+      ...(updates.rut ? { rut: formatRut(updates.rut) } : {}),
+    };
+    const profiles = this.getProfiles().map((p) => (p.id === id ? { ...p, ...formattedUpdates } : p));
     localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(profiles));
     this.notify();
 
     const client = getSupabase();
     if (client) {
-      client.from('profiles').update(updates).eq('id', id).then();
+      client.from('profiles').update(formattedUpdates).eq('id', id).then();
     }
   }
 
@@ -768,6 +800,9 @@ class WarehouseStore {
         reason: newRequest.reason,
         priority: newRequest.priority,
         status: newRequest.status,
+        damaged_photo_data: newRequest.damaged_photo_data,
+        requested_by_role: newRequest.requested_by_role,
+        approver_role: newRequest.approver_role,
       }]).then();
     }
 
@@ -779,7 +814,8 @@ class WarehouseStore {
     status: 'aprobada' | 'rechazada',
     supervisorId: string,
     supervisorName: string,
-    notes?: string
+    notes?: string,
+    damagedPhotoData?: string
   ): void {
     const requests = this.getRequests().map((r) => {
       if (r.id === requestId) {
@@ -789,6 +825,7 @@ class WarehouseStore {
           supervisor_id: supervisorId,
           supervisor_name: supervisorName,
           supervisor_notes: notes,
+          damaged_photo_data: damagedPhotoData || r.damaged_photo_data,
           approved_at: status === 'aprobada' ? new Date().toISOString() : undefined,
         };
       }
@@ -800,12 +837,44 @@ class WarehouseStore {
 
     const client = getSupabase();
     if (client) {
-      client.from('requests').update({
+      const updatePayload: any = {
         status,
         supervisor_id: supervisorId,
         supervisor_name: supervisorName,
         supervisor_notes: notes,
         approved_at: status === 'aprobada' ? new Date().toISOString() : null,
+      };
+      if (damagedPhotoData) {
+        updatePayload.damaged_photo_data = damagedPhotoData;
+      }
+      client.from('requests').update(updatePayload).eq('id', requestId).then();
+    }
+  }
+
+  // --- AVISO DE RETIRO: BODERGUERO NOTIFICA QUE EL PEDIDO ESTÁ LISTO EN MESÓN ---
+  public markRequestReadyForPickup(requestId: string, staffName: string): void {
+    const now = new Date().toISOString();
+    const requests = this.getRequests().map((r) => {
+      if (r.id === requestId) {
+        return {
+          ...r,
+          status: 'lista_retiro' as const,
+          ready_for_pickup_at: now,
+          prepared_by_name: staffName,
+        };
+      }
+      return r;
+    });
+
+    localStorage.setItem(STORAGE_KEYS.REQUESTS, JSON.stringify(requests));
+    this.notify();
+
+    const client = getSupabase();
+    if (client) {
+      client.from('requests').update({
+        status: 'lista_retiro',
+        ready_for_pickup_at: now,
+        prepared_by_name: staffName,
       }).eq('id', requestId).then();
     }
   }

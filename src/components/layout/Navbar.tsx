@@ -16,7 +16,9 @@ import {
   Crown,
   Layers,
   ArrowLeft,
-  Search
+  Search,
+  Users,
+  Building2
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -50,21 +52,25 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenS
       case 'supervisor':
         return [
           { id: 'aprobaciones', label: 'Bandeja de Aprobación', icon: <ClipboardCheck className="w-4 h-4" /> },
+          { id: 'pedir_insumos', label: 'Pedir Insumos', icon: <Search className="w-4 h-4" /> },
           { id: 'stock_consulta', label: 'Verificar Stock', icon: <Package className="w-4 h-4" /> },
         ];
       case 'bodeguero_admin':
         return [
           { id: 'despacho', label: 'Despacho & Entrega', icon: <Boxes className="w-4 h-4" /> },
+          { id: 'pedir_insumos', label: 'Pedir Insumos', icon: <Search className="w-4 h-4" /> },
           { id: 'inventario', label: 'Inventario General', icon: <Package className="w-4 h-4" /> },
           { id: 'compras', label: 'Solicitud de Compras', icon: <ShoppingCart className="w-4 h-4" /> },
           { id: 'actas_auditoria', label: 'Actas y Firmas', icon: <FileText className="w-4 h-4" /> },
         ];
       case 'jefe_seccion':
         return [
-          { id: 'dashboard_ejecutivo', label: 'Dashboard Ejecutivo', icon: <BarChart3 className="w-4 h-4" /> },
-          { id: 'presupuestos_area', label: 'Presupuestos por CC', icon: <DollarSign className="w-4 h-4" /> },
-          { id: 'stock_critico', label: 'Stock y Alertas', icon: <Package className="w-4 h-4" /> },
-          { id: 'auditoria_total', label: 'Auditoría de Entregas', icon: <FileText className="w-4 h-4" /> },
+          { id: 'dashboard_ejecutivo', label: 'Dashboard Área', icon: <BarChart3 className="w-4 h-4" /> },
+          { id: 'aprobaciones_jefatura', label: 'Autorizaciones Staff', icon: <ClipboardCheck className="w-4 h-4" /> },
+          { id: 'gestion_usuarios_cc', label: 'Configurar CC & Personal', icon: <Users className="w-4 h-4" /> },
+          { id: 'pedir_insumos', label: 'Pedir Insumos', icon: <Search className="w-4 h-4" /> },
+          { id: 'presupuestos_area', label: 'Presupuestos CC', icon: <DollarSign className="w-4 h-4" /> },
+          { id: 'auditoria_total', label: 'Libro de Actas', icon: <FileText className="w-4 h-4" /> },
         ];
       default:
         return [];

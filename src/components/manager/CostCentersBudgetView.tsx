@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { CostCenter, DeliveryRecord } from '../../types';
 import { store } from '../../services/store';
-import { DollarSign, TrendingUp, AlertCircle, CheckCircle2, Edit3, X } from 'lucide-react';
+import { DollarSign, TrendingUp, AlertCircle, CheckCircle2, Edit3, X, Filter } from 'lucide-react';
 
 export const CostCentersBudgetView: React.FC = () => {
   const [costCenters, setCostCenters] = useState<CostCenter[]>(() => store.getCostCenters());
   const [deliveries, setDeliveries] = useState<DeliveryRecord[]>(() => store.getDeliveries());
   const [editingCC, setEditingCC] = useState<CostCenter | null>(null);
   const [newBudget, setNewBudget] = useState<number>(0);
+  const [selectedFilterCC, setSelectedFilterCC] = useState<string>('TODOS');
 
   useEffect(() => {
     return store.subscribe(() => {
@@ -16,8 +17,12 @@ export const CostCentersBudgetView: React.FC = () => {
     });
   }, []);
 
-  const totalAssigned = costCenters.reduce((s, c) => s + Number(c.assigned_budget), 0);
-  const totalExecuted = costCenters.reduce((s, c) => s + Number(c.executed_budget), 0);
+  const displayedCostCenters = selectedFilterCC === 'TODOS'
+    ? costCenters
+    : costCenters.filter((c) => c.id === selectedFilterCC || c.code === selectedFilterCC);
+
+  const totalAssigned = displayedCostCenters.reduce((s, c) => s + Number(c.assigned_budget), 0);
+  const totalExecuted = displayedCostCenters.reduce((s, c) => s + Number(c.executed_budget), 0);
   const totalRemaining = totalAssigned - totalExecuted;
   const totalExecutionPercent = totalAssigned > 0 ? (totalExecuted / totalAssigned) * 100 : 0;
 
@@ -25,16 +30,15 @@ export const CostCentersBudgetView: React.FC = () => {
     e.preventDefault();
     if (!editingCC) return;
 
-    const updated = costCenters.map((c) =>
-      c.id === editingCC.id ? { ...c, assigned_budget: Number(newBudget) } : c
-    );
-    localStorage.setItem('bodega_cost_centers_v1', JSON.stringify(updated));
+    store.updateCostCenter(editingCC.id, {
+      assigned_budget: Number(newBudget),
+    });
     setEditingCC(null);
   };
 
   return (
     <div className="space-y-4">
-      {/* Cabecera */}
+      {/* Cabecera con Filtro */}
       <div className="bg-white p-4 rounded-lg border border-slate-300 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-calibri-title text-slate-900 flex items-center gap-2">
@@ -44,6 +48,24 @@ export const CostCentersBudgetView: React.FC = () => {
           <p className="text-calibri-normal text-slate-600">
             Supervisión y ajuste del presupuesto asignado, gasto ejecutado por bodega y saldos disponibles.
           </p>
+        </div>
+
+        {/* Filtro por Centro de Costos o Total */}
+        <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+          <Filter className="w-4 h-4 text-slate-500 ml-1" />
+          <span className="text-xs font-bold text-slate-600">Filtrar:</span>
+          <select
+            value={selectedFilterCC}
+            onChange={(e) => setSelectedFilterCC(e.target.value)}
+            className="px-2.5 py-1 text-xs border border-slate-300 rounded bg-white text-slate-800 font-bold focus:outline-none focus:ring-1 focus:ring-sky-600"
+          >
+            <option value="TODOS">TODOS LOS CENTROS (Consolidado)</option>
+            {costCenters.map((cc) => (
+              <option key={cc.id} value={cc.id}>
+                {cc.code} - {cc.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -116,7 +138,7 @@ export const CostCentersBudgetView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {costCenters.map((cc) => {
+              {displayedCostCenters.map((cc) => {
                 const assigned = Number(cc.assigned_budget);
                 const executed = Number(cc.executed_budget);
                 const balance = assigned - executed;

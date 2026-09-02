@@ -46,7 +46,7 @@ export interface CostCenter {
 }
 
 export type RequestPriority = 'Normal' | 'Urgente';
-export type RequestStatus = 'pendiente' | 'aprobada' | 'rechazada' | 'entregada';
+export type RequestStatus = 'pendiente' | 'aprobada' | 'lista_retiro' | 'rechazada' | 'entregada';
 
 export interface RequestItem {
   id: string;
@@ -73,6 +73,11 @@ export interface WarehouseRequest {
   supervisor_id?: string;
   supervisor_name?: string;
   supervisor_notes?: string;
+  damaged_photo_data?: string;
+  ready_for_pickup_at?: string;
+  prepared_by_name?: string;
+  requested_by_role?: UserRole;
+  approver_role?: 'supervisor' | 'jefe_seccion';
   approved_at?: string;
   created_at: string;
   items: RequestItem[];

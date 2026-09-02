@@ -25,6 +25,8 @@ import { PurchaseOrdersView } from './components/warehouse/PurchaseOrdersView';
 import { ExecutiveDashboardView } from './components/manager/ExecutiveDashboardView';
 import { CostCentersBudgetView } from './components/manager/CostCentersBudgetView';
 import { AuditRecordsView } from './components/manager/AuditRecordsView';
+import { SectionUserManagerView } from './components/manager/SectionUserManagerView';
+import { SectionApprovalsView } from './components/manager/SectionApprovalsView';
 
 import { Product } from './types';
 
@@ -111,6 +113,8 @@ const MainLayout: React.FC = () => {
       switch (currentTab) {
         case 'aprobaciones':
           return <PendingApprovalsView />;
+        case 'pedir_insumos':
+          return <TechnicianPortalView onNavigateToReceipts={() => {}} />;
         case 'stock_consulta':
           return <SupervisorStockView />;
         case 'presupuesto_supervisor':
@@ -125,6 +129,8 @@ const MainLayout: React.FC = () => {
       switch (currentTab) {
         case 'despacho':
           return <DeliveryQueueView />;
+        case 'pedir_insumos':
+          return <TechnicianPortalView onNavigateToReceipts={() => {}} />;
         case 'inventario':
           return <InventoryTableView onGoToPurchaseOrder={handleGoToPurchase} />;
         case 'compras':
@@ -147,6 +153,12 @@ const MainLayout: React.FC = () => {
               onNavigateToAudit={() => setCurrentTab('auditoria_total')}
             />
           );
+        case 'aprobaciones_jefatura':
+          return <SectionApprovalsView />;
+        case 'gestion_usuarios_cc':
+          return <SectionUserManagerView />;
+        case 'pedir_insumos':
+          return <TechnicianPortalView onNavigateToReceipts={() => {}} />;
         case 'presupuestos_area':
           return <CostCentersBudgetView />;
         case 'stock_critico':

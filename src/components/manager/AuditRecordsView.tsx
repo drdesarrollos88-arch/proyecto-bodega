@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { DeliveryRecord } from '../../types';
 import { store } from '../../services/store';
-import { ShieldCheck, Search, Eye, Calendar, Printer, User, DollarSign, Filter } from 'lucide-react';
+import { ShieldCheck, Search, Eye, Calendar, Printer, User, DollarSign, Filter, FileSpreadsheet } from 'lucide-react';
 import { DeliveryReceiptModal } from '../reports/DeliveryReceiptModal';
+import { EmployeeConsolidatedReportModal } from '../reports/EmployeeConsolidatedReportModal';
 
 export const AuditRecordsView: React.FC = () => {
   const [deliveries, setDeliveries] = useState<DeliveryRecord[]>(() => store.getDeliveries());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCostCenter, setSelectedCostCenter] = useState('todos');
   const [selectedDelivery, setSelectedDelivery] = useState<DeliveryRecord | null>(null);
+  const [showConsolidatedModal, setShowConsolidatedModal] = useState(false);
+  const [consolidatedRut, setConsolidatedRut] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     return store.subscribe(() => {
@@ -38,12 +41,23 @@ export const AuditRecordsView: React.FC = () => {
             Libro de Actas y Registro Verificable de Entregas
           </h1>
           <p className="text-calibri-normal text-slate-600">
-            Archivo inmutable de comprobantes con firma digital del receptor, fotografía de entrega e imputación presupuestaria.
+            Archivo inmutable de comprobantes individuales por evento y actas consolidadas por funcionario.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setConsolidatedRut(undefined);
+              setShowConsolidatedModal(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-calibri-normal font-bold shadow-sm transition-colors touch-target"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-200" />
+            Acta Consolidada por Funcionario
+          </button>
           <span className="text-calibri-normal bg-sky-50 text-sky-800 border border-sky-200 px-3 py-1 rounded font-bold">
-            {filteredDeliveries.length} actas verificables (${totalAuditedAmount.toLocaleString('es-CL')})
+            {filteredDeliveries.length} actas (${totalAuditedAmount.toLocaleString('es-CL')})
           </span>
         </div>
       </div>
@@ -139,11 +153,19 @@ export const AuditRecordsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal de Acta de Entrega */}
+      {/* Modal de Acta de Entrega Individual */}
       <DeliveryReceiptModal
         delivery={selectedDelivery}
         onClose={() => setSelectedDelivery(null)}
       />
+
+      {/* Modal de Acta Consolidada Histórica por Funcionario (Sin Fotos) */}
+      {showConsolidatedModal && (
+        <EmployeeConsolidatedReportModal
+          initialEmployeeRut={consolidatedRut}
+          onClose={() => setShowConsolidatedModal(false)}
+        />
+      )}
     </div>
   );
 };

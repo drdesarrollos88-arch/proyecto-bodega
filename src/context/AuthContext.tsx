@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, UserRole } from '../types';
 import { store } from '../services/store';
+import { cleanRut } from '../utils/rut';
 
 interface AuthContextType {
   currentUser: UserProfile | null;
@@ -20,41 +21,42 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<UserProfile[]>(() => store.getProfiles());
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
-    const saved = localStorage.getItem('bodega_auth_user_id');
-    const profiles = store.getProfiles();
-    return profiles.find((p) => p.id === saved) || null;
-  });
-
-  const [emulatedUser, setEmulatedUser] = useState<UserProfile | null>(() => {
-    const saved = localStorage.getItem('bodega_emulated_user_id');
-    const profiles = store.getProfiles();
-    return profiles.find((p) => p.id === saved) || null;
-  });
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [emulatedUser, setEmulatedUser] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     return store.subscribe(() => {
-      const currentProfiles = store.getProfiles();
-      setUsers(currentProfiles);
-      if (currentUser) {
-        const updated = currentProfiles.find((p) => p.id === currentUser.id);
-        if (updated) setCurrentUser(updated);
-      }
-      if (emulatedUser) {
-        const updatedEm = currentProfiles.find((p) => p.id === emulatedUser.id);
-        if (updatedEm) setEmulatedUser(updatedEm);
-      }
+      setUsers(store.getProfiles());
     });
-  }, [currentUser?.id, emulatedUser?.id]);
+  }, []);
+
+  // Restaurar sesión previa guardada
+  useEffect(() => {
+    const savedUserId = localStorage.getItem('bodega_auth_user_id');
+    const savedEmulatedId = localStorage.getItem('bodega_emulated_user_id');
+
+    if (savedUserId) {
+      const foundUser = users.find((u) => u.id === savedUserId);
+      if (foundUser) setCurrentUser(foundUser);
+    }
+    if (savedEmulatedId) {
+      const foundEmulated = users.find((u) => u.id === savedEmulatedId);
+      if (foundEmulated) setEmulatedUser(foundEmulated);
+    }
+  }, [users]);
+
+  const activeUser = emulatedUser || currentUser;
 
   const login = (identifier: string, password: string): { success: boolean; error?: string } => {
     const cleanId = identifier.trim().toLowerCase();
+    const cleanIdRut = cleanRut(cleanId);
     const cleanPass = password.trim();
 
     const found = users.find(
       (u) =>
         u.id.toLowerCase() === cleanId ||
         u.rut.toLowerCase() === cleanId ||
+        (cleanIdRut && cleanRut(u.rut) === cleanIdRut) ||
         (u.email && u.email.toLowerCase() === cleanId)
     );
 
@@ -111,8 +113,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setEmulatedUser(null);
     localStorage.removeItem('bodega_emulated_user_id');
   };
-
-  const activeUser = emulatedUser || currentUser;
 
   return (
     <AuthContext.Provider

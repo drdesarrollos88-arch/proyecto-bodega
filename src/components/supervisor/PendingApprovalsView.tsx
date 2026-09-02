@@ -11,9 +11,11 @@ import {
   Calendar, 
   DollarSign, 
   AlertCircle, 
-  Boxes 
+  Boxes,
+  Camera 
 } from 'lucide-react';
 import { Badge } from '../common/Badge';
+import { CameraCapture } from '../common/CameraCapture';
 
 export const PendingApprovalsView: React.FC = () => {
   const { currentUser, activeUser } = useAuth();
@@ -29,12 +31,18 @@ export const PendingApprovalsView: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [feedback, setFeedback] = useState<string | null>(null);
 
+  // Foto de producto dañado tomada por el supervisor en terreno
+  const [isDamagedReplacement, setIsDamagedReplacement] = useState(false);
+  const [damagedPhoto, setDamagedPhoto] = useState('');
+
   // Modal para asignación directa a técnico
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assignTechId, setAssignTechId] = useState('');
   const [assignProductId, setAssignProductId] = useState('');
   const [assignQuantity, setAssignQuantity] = useState(1);
   const [assignNote, setAssignNote] = useState('Asignación de turno terreno');
+  const [assignIsDamaged, setAssignIsDamaged] = useState(false);
+  const [assignDamagedPhoto, setAssignDamagedPhoto] = useState('');
 
   const allProfiles = store.getProfiles();
   const technicians = allProfiles.filter((p) => p.role === 'tecnico');
@@ -58,6 +66,11 @@ export const PendingApprovalsView: React.FC = () => {
       return;
     }
 
+    if (actionModal.type === 'approve' && isDamagedReplacement && !damagedPhoto) {
+      alert('Debes capturar la fotografía del insumo dañado en terreno para respaldar la reposición.');
+      return;
+    }
+
     const newStatus = actionModal.type === 'approve' ? 'aprobada' : 'rechazada';
 
     store.updateRequestStatus(
@@ -65,7 +78,8 @@ export const PendingApprovalsView: React.FC = () => {
       newStatus,
       user.id,
       user.name,
-      notes.trim() || undefined
+      notes.trim() || undefined,
+      isDamagedReplacement ? damagedPhoto : undefined
     );
 
     setFeedback(
@@ -76,6 +90,8 @@ export const PendingApprovalsView: React.FC = () => {
 
     setActionModal(null);
     setNotes('');
+    setIsDamagedReplacement(false);
+    setDamagedPhoto('');
 
     setTimeout(() => {
       setFeedback(null);
@@ -93,6 +109,11 @@ export const PendingApprovalsView: React.FC = () => {
       return;
     }
 
+    if (assignIsDamaged && !assignDamagedPhoto) {
+      alert('Por favor captura la fotografía del artículo deteriorado en terreno.');
+      return;
+    }
+
     const newReq = store.createRequest({
       technician_id: tech.id,
       technician_name: tech.name,
@@ -100,6 +121,7 @@ export const PendingApprovalsView: React.FC = () => {
       cost_center_id: tech.cost_center_id || 'CC-101',
       reason: assignNote.trim() || 'Asignación directa por Supervisor',
       priority: 'Urgente',
+      damaged_photo_data: assignIsDamaged ? assignDamagedPhoto : undefined,
       items: [
         {
           id: 'item-' + Date.now(),
@@ -119,10 +141,13 @@ export const PendingApprovalsView: React.FC = () => {
       'aprobada',
       user.id,
       user.name,
-      `Asignado directamente por ${user.name}. Listo para retirar en Bodega Principal.`
+      `Asignado directamente por ${user.name}. Listo para retirar en Bodega Principal.`,
+      assignIsDamaged ? assignDamagedPhoto : undefined
     );
 
     setShowAssignModal(false);
+    setAssignIsDamaged(false);
+    setAssignDamagedPhoto('');
     setFeedback(`¡Material asignado a ${tech.name}! Le aparecerá la notificación inmediata en su teléfono.`);
     setTimeout(() => setFeedback(null), 3500);
   };
@@ -404,9 +429,36 @@ export const PendingApprovalsView: React.FC = () => {
             <form onSubmit={handleConfirmAction} className="p-4 space-y-3">
               <p className="text-calibri-normal text-slate-700">
                 {actionModal.type === 'approve'
-                  ? 'Al autorizar, este pedido pasará de inmediato a la lista de retiro del personal de bodega. El técnico podrá acudir a retirar.'
+                  ? 'Al autorizar, este pedido pasará a bodega para su preparación y aviso de retiro.'
                   : 'Al rechazar, el técnico verá la justificación ingresada y el pedido no podrá ser despachado.'}
               </p>
+
+              {/* Si es Aprobación: Opción para que el supervisor tome la foto del insumo dañado en terreno */}
+              {actionModal.type === 'approve' && (
+                <div className="p-3 bg-amber-50 border border-amber-300 rounded space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer text-calibri-title text-amber-950 font-bold text-xs">
+                    <input
+                      type="checkbox"
+                      checked={isDamagedReplacement}
+                      onChange={(e) => setIsDamagedReplacement(e.target.checked)}
+                      className="w-4 h-4 text-amber-700 rounded"
+                    />
+                    <span>¿Corresponde a reposición de artículo dañado / en desuso en terreno?</span>
+                  </label>
+                  {isDamagedReplacement && (
+                    <div className="space-y-1.5 pt-1">
+                      <p className="text-xs text-amber-800">
+                        Como <strong>Supervisor de Terreno</strong>, toma la fotografía del producto dañado aquí mismo en faena. Así el administrativo/bodeguero no tendrá que realizar este trámite en bodega:
+                      </p>
+                      <CameraCapture
+                        title="Foto de Insumo Dañado en Terreno"
+                        subtitle="Enfoca el artículo deteriorado en faena para respaldar la reposición"
+                        onCapture={(url) => setDamagedPhoto(url)}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label className="block text-calibri-normal font-bold text-slate-700 mb-1">
@@ -541,6 +593,31 @@ export const PendingApprovalsView: React.FC = () => {
                   onChange={(e) => setAssignNote(e.target.value)}
                   className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-calibri-normal"
                 />
+              </div>
+
+              {/* Reposición con foto tomada por el supervisor */}
+              <div className="p-3 bg-amber-50 border border-amber-300 rounded space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer text-calibri-title text-amber-950 font-bold text-xs">
+                  <input
+                    type="checkbox"
+                    checked={assignIsDamaged}
+                    onChange={(e) => setAssignIsDamaged(e.target.checked)}
+                    className="w-4 h-4 text-amber-700 rounded"
+                  />
+                  <span>¿Es reposición por producto dañado en terreno?</span>
+                </label>
+                {assignIsDamaged && (
+                  <div className="space-y-1.5 pt-1">
+                    <p className="text-xs text-amber-800">
+                      Toma la foto del equipo dañado devuelto por el técnico en faena:
+                    </p>
+                    <CameraCapture
+                      title="Foto de Insumo Dañado"
+                      subtitle="Enfoca el artículo dañado para justificar la entrega"
+                      onCapture={(url) => setAssignDamagedPhoto(url)}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t">

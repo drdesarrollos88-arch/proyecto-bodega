@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { UserProfile, CostCenter, Product, UserRole, ProductCategory } from '../../types';
 import { store } from '../../services/store';
 import { useAuth } from '../../context/AuthContext';
+import { formatRut } from '../../utils/rut';
 import { 
   Crown, 
   Users, 
@@ -103,10 +104,12 @@ export const SuperadminDashboard: React.FC = () => {
     e.preventDefault();
     if (!userName || !userRut) return;
 
+    const formattedRut = formatRut(userRut);
+
     if (editingUser) {
       store.updateUser(editingUser.id, {
         name: userName.trim(),
-        rut: userRut.trim(),
+        rut: formattedRut,
         role: userRole,
         cost_center_id: userCC,
         password: userPassword.trim() || '123456',
@@ -117,7 +120,7 @@ export const SuperadminDashboard: React.FC = () => {
     } else {
       store.addUser({
         name: userName.trim(),
-        rut: userRut.trim(),
+        rut: formattedRut,
         role: userRole,
         cost_center_id: userCC,
         password: userPassword.trim() || '123456',
