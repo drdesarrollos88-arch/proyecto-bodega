@@ -38,21 +38,26 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
     e.preventDefault();
     setValidationError(null);
 
-    // Validación estricta de auditoría: Se requiere firma y foto de entrega
+    // Firma digital siempre obligatoria
     if (!signatureData) {
       setValidationError('La firma digital del receptor es obligatoria para garantizar la trazabilidad.');
       return;
     }
 
-    if (!photoData) {
-      setValidationError('La fotografía de respaldo de la entrega de los insumos es obligatoria para la auditoría.');
+    // Validación condicional de foto única:
+    if (returnStatus === 'devuelto_danado' && !damagedPhotoData) {
+      setValidationError('Para dar de baja el producto dañado, es obligatorio tomar la fotografía del artículo deteriorado.');
       return;
     }
 
-    if (returnStatus === 'devuelto_danado' && !damagedPhotoData) {
-      setValidationError('Para la reposición por producto dañado, es obligatorio tomar la fotografía del artículo deteriorado que se recibe.');
+    if (returnStatus === 'sin_retorno_nuevo' && !photoData) {
+      setValidationError('Debe tomar la fotografía de respaldo de la entrega de insumos.');
       return;
     }
+
+    // Si es extraviado, NO requiere foto
+
+    const finalPhoto = returnStatus === 'devuelto_danado' ? damagedPhotoData : photoData;
 
     try {
       setIsProcessing(true);
@@ -60,7 +65,7 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
         requestId: request.id,
         warehouseStaffName: user.name,
         signatureData,
-        photoData,
+        photoData: finalPhoto || '',
         returnStatus,
         damagedPhotoData: returnStatus === 'devuelto_danado' ? damagedPhotoData : undefined,
         lossReason: returnStatus === 'extraviado' ? lossReason.trim() : undefined,
@@ -230,13 +235,13 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
               </button>
             </div>
 
-            {/* Condicional: Si es Producto Dañado -> Foto Obligatoria del Daño */}
+            {/* Condicional: Si es Producto Dañado -> 1 Sola Foto (Del Daño) */}
             {returnStatus === 'devuelto_danado' && (
               <div className="p-3 bg-amber-50/80 border border-amber-300 rounded-lg space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-calibri-title text-amber-950 font-bold text-xs flex items-center gap-1.5">
                     <Camera className="w-4 h-4 text-amber-700" />
-                    Fotografía del Producto Dañado a Dar de Baja: *
+                    Fotografía Única del Producto Dañado a Dar de Baja: *
                   </label>
                   {damagedPhotoData && (
                     <span className="text-xs text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
@@ -245,21 +250,53 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
                   )}
                 </div>
                 <p className="text-xs text-amber-800">
-                  Captura el estado del artículo en desuso para respaldar la auditoría de baja y reposición física.
+                  Captura el estado del artículo en desuso devuelto para la baja física de inventario. (Esta será la única foto requerida).
                 </p>
-                <CameraCapture onCapture={(url) => setDamagedPhotoData(url)} />
+                <CameraCapture
+                  title="Foto del Producto Dañado (Baja)"
+                  subtitle="Enfoca el artículo roto o deteriorado devuelto por el técnico"
+                  onCapture={(url) => {
+                    setDamagedPhotoData(url);
+                    setPhotoData(url);
+                  }}
+                />
               </div>
             )}
 
-            {/* Condicional: Si es Extraviado -> Declaración de pérdida sin foto */}
+            {/* Condicional: Si es Insumo Nuevo -> 1 Sola Foto (De Entrega) */}
+            {returnStatus === 'sin_retorno_nuevo' && (
+              <div className="p-3 bg-sky-50/80 border border-sky-300 rounded-lg space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-calibri-title text-sky-950 font-bold text-xs flex items-center gap-1.5">
+                    <Camera className="w-4 h-4 text-sky-700" />
+                    Fotografía de Entrega de Insumos: *
+                  </label>
+                  {photoData && (
+                    <span className="text-xs text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+                      ✓ Foto registrada
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-sky-800">
+                  Captura los insumos siendo entregados en ventanilla de bodega.
+                </p>
+                <CameraCapture
+                  title="Foto de Entrega"
+                  subtitle="Enfoca los insumos entregados al técnico receptor"
+                  onCapture={(url) => setPhotoData(url)}
+                />
+              </div>
+            )}
+
+            {/* Condicional: Si es Extraviado -> Declaración de pérdida SIN FOTO */}
             {returnStatus === 'extraviado' && (
               <div className="p-3 bg-rose-50 border border-rose-300 rounded-lg space-y-2">
                 <div className="flex items-center gap-2 text-rose-900 font-bold text-xs">
                   <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
-                  <span>Declaración Oficial de Extravío en Faena (Sin Foto de Devolución)</span>
+                  <span>Declaración Oficial de Extravío en Faena (Sin Foto)</span>
                 </div>
                 <p className="text-xs text-rose-700">
-                  El artículo anterior se declara formalmente extraviado o irrecuperable. Quedará consignado en el acta de entrega sin foto.
+                  El artículo anterior se declara formalmente extraviado. Quedará consignado en el acta sin necesidad de fotografía.
                 </p>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -292,18 +329,11 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
             />
           </div>
 
-          {/* 1. MÓDULO DE FIRMA DIGITAL */}
+          {/* MÓDULO DE FIRMA DIGITAL (SIEMPRE REQUERIDO) */}
           <div className="space-y-1">
             <SignaturePad
               signeeName={request.technician_name}
               onSave={(sigUrl) => setSignatureData(sigUrl)}
-            />
-          </div>
-
-          {/* 2. MÓDULO DE FOTOGRAFÍA DE LA ENTREGA */}
-          <div className="space-y-1">
-            <CameraCapture
-              onCapture={(photoUrl) => setPhotoData(photoUrl)}
             />
           </div>
 
