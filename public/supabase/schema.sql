@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     rut TEXT NOT NULL,
     role TEXT NOT NULL CHECK (role IN ('tecnico', 'supervisor', 'bodeguero_admin', 'jefe_seccion', 'superadmin')),
     cost_center_id TEXT REFERENCES cost_centers(id),
+    password TEXT NOT NULL DEFAULT '123456',
     phone TEXT,
     email TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

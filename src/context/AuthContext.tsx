@@ -8,7 +8,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isEmulating: boolean;
   allUsers: UserProfile[];
-  login: (userId: string) => void;
+  login: (identifier: string, password: string) => { success: boolean; error?: string };
+  loginQuick: (userId: string) => void;
   logout: () => void;
   setRole: (role: UserRole) => void;
   startEmulation: (user: UserProfile) => void;
@@ -46,8 +47,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, [currentUser?.id, emulatedUser?.id]);
 
-  const login = (userId: string) => {
-    const found = users.find((u) => u.id === userId || u.rut === userId || u.email === userId);
+  const login = (identifier: string, password: string): { success: boolean; error?: string } => {
+    const cleanId = identifier.trim().toLowerCase();
+    const cleanPass = password.trim();
+
+    const found = users.find(
+      (u) =>
+        u.id.toLowerCase() === cleanId ||
+        u.rut.toLowerCase() === cleanId ||
+        (u.email && u.email.toLowerCase() === cleanId)
+    );
+
+    if (!found) {
+      return { success: false, error: 'Usuario no encontrado. Verifique su RUT o Correo.' };
+    }
+
+    const expectedPass = found.password || (found.role === 'superadmin' ? 'admin123' : '123456');
+    if (cleanPass !== expectedPass) {
+      return { success: false, error: 'Contraseña incorrecta. Intente nuevamente.' };
+    }
+
+    setCurrentUser(found);
+    setEmulatedUser(null);
+    localStorage.setItem('bodega_auth_user_id', found.id);
+    localStorage.removeItem('bodega_emulated_user_id');
+    return { success: true };
+  };
+
+  const loginQuick = (userId: string) => {
+    const found = users.find((u) => u.id === userId);
     if (found) {
       setCurrentUser(found);
       setEmulatedUser(null);
@@ -95,6 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isEmulating: !!emulatedUser,
         allUsers: users,
         login,
+        loginQuick,
         logout,
         setRole,
         startEmulation,

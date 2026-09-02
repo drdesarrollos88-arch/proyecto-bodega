@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Boxes, 
-  ShieldCheck, 
   Lock, 
   User, 
   ArrowRight, 
@@ -11,7 +10,10 @@ import {
   PackageCheck, 
   BarChart3, 
   Crown,
-  Database
+  Database,
+  Eye,
+  EyeOff,
+  KeyRound
 } from 'lucide-react';
 import { UserRole } from '../../types';
 
@@ -23,22 +25,36 @@ export const LoginView: React.FC<LoginViewProps> = ({ onOpenSupabaseModal }) => 
   const { allUsers, login } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   const handleManualLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    const found = allUsers.find(
-      (u) =>
-        u.rut.toLowerCase() === identifier.trim().toLowerCase() ||
-        (u.email && u.email.toLowerCase() === identifier.trim().toLowerCase())
-    );
+    setInfoMessage(null);
 
-    if (found) {
-      login(found.id);
-    } else {
-      setError('Credenciales no válidas. Puedes seleccionar uno de los perfiles rápidos abajo.');
+    if (!identifier.trim()) {
+      setError('Por favor ingrese su RUT o Correo Electrónico.');
+      return;
     }
+    if (!password) {
+      setError('Por favor ingrese su contraseña de acceso.');
+      return;
+    }
+
+    const result = login(identifier, password);
+    if (!result.success) {
+      setError(result.error || 'Credenciales no válidas.');
+    }
+  };
+
+  const handleSelectQuickUser = (user: typeof allUsers[0]) => {
+    setIdentifier(user.email || user.rut);
+    const pass = user.password || (user.role === 'superadmin' ? 'admin123' : '123456');
+    setPassword(pass);
+    setError(null);
+    setInfoMessage(`Perfil seleccionado: ${user.name}. Contraseña: "${pass}". Haz clic en "Ingresar a mi Portal".`);
   };
 
   const getRoleBadge = (role: UserRole) => {
@@ -66,7 +82,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onOpenSupabaseModal }) => 
           SISTEMA DE GESTIÓN DE BODEGA E INVENTARIO
         </h1>
         <p className="text-calibri-normal text-slate-600 text-xs mt-1">
-          Acceso autenticado con separación estricta de vistas por perfil
+          Acceso corporativo protegido por contraseña obligatoria
         </p>
       </div>
 
@@ -75,8 +91,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ onOpenSupabaseModal }) => 
           {/* Formulario de Login */}
           <form onSubmit={handleManualLogin} className="space-y-3.5">
             {error && (
-              <div className="p-2.5 bg-rose-50 border border-rose-300 rounded text-calibri-normal text-rose-800 text-xs">
+              <div className="p-2.5 bg-rose-50 border border-rose-300 rounded text-calibri-normal text-rose-800 text-xs font-bold animate-fade-in">
                 {error}
+              </div>
+            )}
+
+            {infoMessage && (
+              <div className="p-2.5 bg-sky-50 border border-sky-300 rounded text-calibri-normal text-sky-900 text-xs animate-fade-in">
+                {infoMessage}
               </div>
             )}
 
@@ -99,17 +121,26 @@ export const LoginView: React.FC<LoginViewProps> = ({ onOpenSupabaseModal }) => 
 
             <div>
               <label className="block text-calibri-normal font-bold text-slate-700 mb-1">
-                Contraseña o PIN de Acceso:
+                Contraseña de Acceso:
               </label>
               <div className="relative">
                 <Lock className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
                 <input
-                  type="password"
-                  placeholder="••••••••"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  placeholder="Ingresa tu contraseña"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded text-calibri-normal focus:outline-none focus:ring-1 focus:ring-sky-700 text-slate-800"
+                  className="w-full pl-9 pr-10 py-2 border border-slate-300 rounded text-calibri-normal focus:outline-none focus:ring-1 focus:ring-sky-700 text-slate-800"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none"
+                  title={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
@@ -124,21 +155,27 @@ export const LoginView: React.FC<LoginViewProps> = ({ onOpenSupabaseModal }) => 
 
           {/* Acceso Rápido por Perfil */}
           <div className="mt-6 pt-5 border-t border-slate-200">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-2">
               <span className="text-calibri-title text-slate-800 text-xs uppercase tracking-wider font-bold">
-                Acceso Rápido por Perfil (Entorno Separado):
+                Perfiles del Sistema (Cargar Credenciales):
               </span>
-              <span className="text-xs text-slate-400">1 Clic</span>
+              <span className="text-xs text-slate-400 flex items-center gap-1">
+                <KeyRound className="w-3 h-3 text-amber-600" /> Clave por defecto
+              </span>
             </div>
+            <p className="text-xs text-slate-500 mb-3">
+              Haz clic en cualquier usuario para cargar sus credenciales de prueba en el formulario y verificar la contraseña:
+            </p>
 
             <div className="space-y-2">
               {allUsers.map((user) => {
                 const badge = getRoleBadge(user.role);
+                const pass = user.password || (user.role === 'superadmin' ? 'admin123' : '123456');
                 return (
                   <button
                     key={user.id}
                     type="button"
-                    onClick={() => login(user.id)}
+                    onClick={() => handleSelectQuickUser(user)}
                     className="w-full flex items-center justify-between p-2.5 rounded-md border border-slate-200 hover:border-sky-500 hover:bg-sky-50/50 transition-all text-left touch-target group"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -157,7 +194,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onOpenSupabaseModal }) => 
                           </span>
                         </div>
                         <span className="text-xs text-slate-500 block">
-                          RUT: {user.rut} • CC: {user.cost_center_id}
+                          RUT: {user.rut} • Clave: <code className="bg-slate-100 px-1 py-0.2 rounded font-mono font-bold text-slate-700">{pass}</code>
                         </span>
                       </div>
                     </div>
@@ -176,7 +213,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onOpenSupabaseModal }) => 
               onClick={onOpenSupabaseModal}
               className="inline-flex items-center gap-1 text-sky-700 hover:underline"
             >
-              <Database className="w-3.5 h-3.5" /> Configuración Base de Datos
+              <Database className="w-3.5 h-3.5" /> Conexión Supabase
             </button>
             <span>Tipografía Calibri 10pt/12pt</span>
           </div>

@@ -38,6 +38,7 @@ export const SuperadminDashboard: React.FC = () => {
   const [userRut, setUserRut] = useState('');
   const [userRole, setUserRole] = useState<UserRole>('tecnico');
   const [userCC, setUserCC] = useState('CC-101');
+  const [userPassword, setUserPassword] = useState('123456');
   const [userEmail, setUserEmail] = useState('');
   const [userPhone, setUserPhone] = useState('');
 
@@ -82,6 +83,7 @@ export const SuperadminDashboard: React.FC = () => {
       setUserRut(u.rut);
       setUserRole(u.role);
       setUserCC(u.cost_center_id);
+      setUserPassword(u.password || '123456');
       setUserEmail(u.email || '');
       setUserPhone(u.phone || '');
     } else {
@@ -90,6 +92,7 @@ export const SuperadminDashboard: React.FC = () => {
       setUserRut('');
       setUserRole('tecnico');
       setUserCC(costCenters[0]?.id || 'CC-101');
+      setUserPassword('123456');
       setUserEmail('');
       setUserPhone('');
     }
@@ -106,6 +109,7 @@ export const SuperadminDashboard: React.FC = () => {
         rut: userRut.trim(),
         role: userRole,
         cost_center_id: userCC,
+        password: userPassword.trim() || '123456',
         email: userEmail.trim() || undefined,
         phone: userPhone.trim() || undefined,
       });
@@ -116,6 +120,7 @@ export const SuperadminDashboard: React.FC = () => {
         rut: userRut.trim(),
         role: userRole,
         cost_center_id: userCC,
+        password: userPassword.trim() || '123456',
         email: userEmail.trim() || undefined,
         phone: userPhone.trim() || undefined,
       });
@@ -342,6 +347,7 @@ export const SuperadminDashboard: React.FC = () => {
                     <th className="p-2.5">RUT</th>
                     <th className="p-2.5">Rol en Sistema</th>
                     <th className="p-2.5">Centro de Costo</th>
+                    <th className="p-2.5">Contraseña</th>
                     <th className="p-2.5">Contacto / Correo</th>
                     <th className="p-2.5 text-center">Acciones y Emulación</th>
                   </tr>
@@ -358,6 +364,11 @@ export const SuperadminDashboard: React.FC = () => {
                         </span>
                       </td>
                       <td className="p-2.5 font-bold text-slate-800">{u.cost_center_id}</td>
+                      <td className="p-2.5">
+                        <code className="bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded font-mono font-bold text-xs text-sky-900">
+                          {u.password || '123456'}
+                        </code>
+                      </td>
                       <td className="p-2.5 text-xs text-slate-500">
                         {u.email} <span className="block text-slate-400">{u.phone}</span>
                       </td>
@@ -659,6 +670,23 @@ export const SuperadminDashboard: React.FC = () => {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-calibri-normal font-bold text-slate-700 mb-1">
+                  Contraseña de Acceso al Portal: *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Mínimo 4 caracteres (ej: 123456)"
+                  value={userPassword}
+                  onChange={(e) => setUserPassword(e.target.value)}
+                  className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-calibri-normal font-mono font-bold text-sky-900"
+                />
+                <span className="text-xs text-slate-400 block mt-0.5">
+                  El trabajador usará esta clave para ingresar a su portal.
+                </span>
+              </div>
+
               <div className="flex items-center justify-end gap-2 pt-2 border-t">
                 <button
                   type="button"
@@ -906,3 +934,4 @@ export const SuperadminDashboard: React.FC = () => {
     </div>
   );
 };
+

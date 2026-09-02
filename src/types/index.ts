@@ -31,6 +31,7 @@ export interface UserProfile {
   rut: string;
   role: UserRole;
   cost_center_id: string;
+  password?: string;
   phone?: string;
   email?: string;
 }

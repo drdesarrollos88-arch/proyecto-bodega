@@ -56,6 +56,7 @@ const INITIAL_PROFILES: UserProfile[] = [
     rut: '10.000.000-1',
     role: 'superadmin',
     cost_center_id: 'CC-104',
+    password: 'admin123',
     phone: '+56 9 9000 0000',
     email: 'admin@empresa.cl',
   },
@@ -65,6 +66,7 @@ const INITIAL_PROFILES: UserProfile[] = [
     rut: '16.894.221-5',
     role: 'tecnico',
     cost_center_id: 'CC-101',
+    password: '123456',
     phone: '+56 9 8452 1190',
     email: 'carlos.munoz@empresa.cl',
   },
@@ -74,6 +76,7 @@ const INITIAL_PROFILES: UserProfile[] = [
     rut: '14.238.995-2',
     role: 'supervisor',
     cost_center_id: 'CC-101',
+    password: '123456',
     phone: '+56 9 9123 4455',
     email: 'roberto.valenzuela@empresa.cl',
   },
@@ -83,6 +86,7 @@ const INITIAL_PROFILES: UserProfile[] = [
     rut: '15.671.304-K',
     role: 'bodeguero_admin',
     cost_center_id: 'CC-104',
+    password: '123456',
     phone: '+56 9 7344 8812',
     email: 'bodega@empresa.cl',
   },
@@ -92,6 +96,7 @@ const INITIAL_PROFILES: UserProfile[] = [
     rut: '11.450.812-3',
     role: 'jefe_seccion',
     cost_center_id: 'CC-104',
+    password: '123456',
     phone: '+56 9 9888 1234',
     email: 'patricio.lagos@empresa.cl',
   },
@@ -534,14 +539,30 @@ class WarehouseStore {
     if (!localStorage.getItem(STORAGE_KEYS.COST_CENTERS)) {
       localStorage.setItem(STORAGE_KEYS.COST_CENTERS, JSON.stringify(INITIAL_COST_CENTERS));
     }
-    // Asegurar que el perfil USR-00 (Superadmin) exista
+    // Asegurar que los perfiles tengan passwords y que USR-00 (Superadmin) exista
     const rawProfiles = localStorage.getItem(STORAGE_KEYS.PROFILES);
     if (!rawProfiles) {
       localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(INITIAL_PROFILES));
     } else {
-      const parsed: UserProfile[] = JSON.parse(rawProfiles);
+      let parsed: UserProfile[] = JSON.parse(rawProfiles);
+      let changed = false;
+
+      // Asegurar que el superadmin exista
       if (!parsed.some(p => p.role === 'superadmin')) {
         parsed.unshift(INITIAL_PROFILES[0]);
+        changed = true;
+      }
+
+      // Asegurar que todos tengan password
+      parsed = parsed.map(p => {
+        if (!p.password) {
+          changed = true;
+          return { ...p, password: p.role === 'superadmin' ? 'admin123' : '123456' };
+        }
+        return p;
+      });
+
+      if (changed) {
         localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(parsed));
       }
     }
