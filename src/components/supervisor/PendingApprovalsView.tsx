@@ -22,13 +22,22 @@ export const PendingApprovalsView: React.FC = () => {
   const [products, setProducts] = useState<Product[]>(() => store.getProducts());
   const [costCenters, setCostCenters] = useState<CostCenter[]>(() => store.getCostCenters());
 
-  // Modal o caja de confirmación para acción
   const [actionModal, setActionModal] = useState<{
     request: WarehouseRequest;
     type: 'approve' | 'reject';
   } | null>(null);
   const [notes, setNotes] = useState('');
   const [feedback, setFeedback] = useState<string | null>(null);
+
+  // Modal para asignación directa a técnico
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assignTechId, setAssignTechId] = useState('');
+  const [assignProductId, setAssignProductId] = useState('');
+  const [assignQuantity, setAssignQuantity] = useState(1);
+  const [assignNote, setAssignNote] = useState('Asignación de turno terreno');
+
+  const allProfiles = store.getProfiles();
+  const technicians = allProfiles.filter((p) => p.role === 'tecnico');
 
   useEffect(() => {
     return store.subscribe(() => {
@@ -73,6 +82,51 @@ export const PendingApprovalsView: React.FC = () => {
     }, 2500);
   };
 
+  const handleDirectAssign = (e: React.FormEvent) => {
+    e.preventDefault();
+    const tech = technicians.find((t) => t.id === assignTechId) || technicians[0];
+    const prod = products.find((p) => p.id === assignProductId) || products[0];
+    if (!tech || !prod) return;
+
+    if (prod.current_stock < assignQuantity) {
+      alert(`No hay stock suficiente para este artículo. Stock actual: ${prod.current_stock}`);
+      return;
+    }
+
+    const newReq = store.createRequest({
+      technician_id: tech.id,
+      technician_name: tech.name,
+      technician_rut: tech.rut,
+      cost_center_id: tech.cost_center_id || 'CC-101',
+      reason: assignNote.trim() || 'Asignación directa por Supervisor',
+      priority: 'Urgente',
+      items: [
+        {
+          id: 'item-' + Date.now(),
+          request_id: '',
+          product_id: prod.id,
+          product_name: prod.name,
+          product_sku: prod.sku,
+          quantity: Number(assignQuantity),
+          unit_price: prod.unit_price,
+          total_price: prod.unit_price * Number(assignQuantity),
+        },
+      ],
+    });
+
+    store.updateRequestStatus(
+      newReq.id,
+      'aprobada',
+      user.id,
+      user.name,
+      `Asignado directamente por ${user.name}. Listo para retirar en Bodega Principal.`
+    );
+
+    setShowAssignModal(false);
+    setFeedback(`¡Material asignado a ${tech.name}! Le aparecerá la notificación inmediata en su teléfono.`);
+    setTimeout(() => setFeedback(null), 3500);
+  };
+
   return (
     <div className="space-y-4">
       {/* Mensaje de Confirmación */}
@@ -87,16 +141,27 @@ export const PendingApprovalsView: React.FC = () => {
       <div className="bg-white p-4 rounded-lg border border-slate-300 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-calibri-title text-slate-900">
-            Bandeja de Autorización de Solicitudes (Supervisor)
+            Bandeja de Autorización y Asignación de Materiales
           </h1>
           <p className="text-calibri-normal text-slate-600">
-            Verifica la existencia real en bodega y aprueba los requerimientos de insumos de tu cuadrilla de terreno.
+            Aprueba solicitudes de insumos o asigna directamente herramientas y EPP a tus técnicos de terreno.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-calibri-normal bg-amber-50 border border-amber-300 text-amber-900 px-3 py-1 rounded font-bold flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              if (technicians.length > 0) setAssignTechId(technicians[0].id);
+              if (products.length > 0) setAssignProductId(products[0].id);
+              setShowAssignModal(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-calibri-normal font-bold shadow-sm touch-target"
+          >
+            <Boxes className="w-4 h-4" /> Asignar Material a Técnico
+          </button>
+          <span className="text-calibri-normal bg-amber-50 border border-amber-300 text-amber-900 px-3 py-1.5 rounded font-bold flex items-center gap-1.5">
             <Clock className="w-4 h-4 text-amber-700" />
-            {pendingRequests.length} solicitudes pendientes
+            {pendingRequests.length} pendientes
           </span>
         </div>
       </div>
@@ -340,6 +405,117 @@ export const PendingApprovalsView: React.FC = () => {
                   }`}
                 >
                   {actionModal.type === 'approve' ? 'Confirmar Autorización' : 'Confirmar Rechazo'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Asignación Directa a Técnico */}
+      {showAssignModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md border border-slate-300 overflow-hidden">
+            <div className="p-3 bg-emerald-800 text-white flex items-center justify-between">
+              <h2 className="text-calibri-title text-white">
+                Asignar Material Directo a Técnico
+              </h2>
+              <button onClick={() => setShowAssignModal(false)} className="text-white/80 hover:text-white">
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleDirectAssign} className="p-4 space-y-3">
+              <p className="text-calibri-normal text-slate-600 text-xs">
+                Esta acción creará una solicitud autorizada de inmediato y el técnico recibirá la notificación en su teléfono para retirar en bodega.
+              </p>
+
+              <div>
+                <label className="block text-calibri-normal font-bold text-slate-700 mb-1">
+                  Seleccionar Técnico de Terreno: *
+                </label>
+                <select
+                  value={assignTechId}
+                  onChange={(e) => setAssignTechId(e.target.value)}
+                  className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-calibri-normal bg-white"
+                >
+                  {technicians.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.rut} - {t.cost_center_id})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-calibri-normal font-bold text-slate-700 mb-1">
+                  Insumo o Herramienta a Asignar: *
+                </label>
+                <select
+                  value={assignProductId}
+                  onChange={(e) => setAssignProductId(e.target.value)}
+                  className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-calibri-normal bg-white"
+                >
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.sku} - {p.name} (Stock: {p.current_stock} {p.unit})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-calibri-normal font-bold text-slate-700 mb-1">
+                    Cantidad: *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={assignQuantity}
+                    onChange={(e) => setAssignQuantity(Number(e.target.value))}
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-calibri-normal font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-calibri-normal font-bold text-slate-700 mb-1">
+                    Prioridad:
+                  </label>
+                  <input
+                    type="text"
+                    disabled
+                    value="Urgente / Asignada"
+                    className="w-full px-2.5 py-1.5 border border-slate-200 bg-slate-100 rounded text-calibri-normal text-slate-600"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-calibri-normal font-bold text-slate-700 mb-1">
+                  Instrucción / Motivo para el técnico:
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej: Material de reemplazo urgente para turno de faena"
+                  value={assignNote}
+                  onChange={(e) => setAssignNote(e.target.value)}
+                  className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-calibri-normal"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowAssignModal(false)}
+                  className="px-3 py-1.5 border border-slate-300 rounded text-calibri-normal text-slate-600 hover:bg-slate-100"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded text-calibri-normal shadow-sm"
+                >
+                  Confirmar y Notificar al Técnico
                 </button>
               </div>
             </form>

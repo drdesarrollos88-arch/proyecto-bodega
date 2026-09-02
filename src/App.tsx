@@ -8,8 +8,7 @@ import { SupabaseModal } from './components/layout/SupabaseModal';
 import { SuperadminDashboard } from './components/admin/SuperadminDashboard';
 
 // Vistas del Técnico
-import { NewRequestView } from './components/technician/NewRequestView';
-import { RequestHistoryView } from './components/technician/RequestHistoryView';
+import { TechnicianPortalView } from './components/technician/TechnicianPortalView';
 import { MyReceiptsView } from './components/technician/MyReceiptsView';
 
 // Vistas del Supervisor
@@ -53,7 +52,7 @@ const MainLayout: React.FC = () => {
         setCurrentTab('aprobaciones');
         break;
       case 'tecnico':
-        setCurrentTab('nueva_solicitud');
+        setCurrentTab('portal_tecnico');
         break;
     }
   }, [activeUser?.id, activeUser?.role]);
@@ -95,17 +94,15 @@ const MainLayout: React.FC = () => {
       }
     }
 
-    // 2. ROL TÉCNICO DE TERRENO (Vista Separada Estricta)
+    // 2. ROL TÉCNICO DE TERRENO (Buscador Rápido y Notificaciones de Retiro)
     if (activeUser.role === 'tecnico') {
       switch (currentTab) {
-        case 'nueva_solicitud':
-          return <NewRequestView onSuccessSubmit={() => setCurrentTab('mis_solicitudes')} />;
-        case 'mis_solicitudes':
-          return <RequestHistoryView />;
+        case 'portal_tecnico':
+          return <TechnicianPortalView onNavigateToReceipts={() => setCurrentTab('mis_retiros')} />;
         case 'mis_retiros':
           return <MyReceiptsView />;
         default:
-          return <NewRequestView onSuccessSubmit={() => setCurrentTab('mis_solicitudes')} />;
+          return <TechnicianPortalView onNavigateToReceipts={() => setCurrentTab('mis_retiros')} />;
       }
     }
 

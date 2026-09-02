@@ -15,7 +15,8 @@ import {
   LogOut,
   Crown,
   Layers,
-  ArrowLeft
+  ArrowLeft,
+  Search
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -43,8 +44,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenS
         ];
       case 'tecnico':
         return [
-          { id: 'nueva_solicitud', label: 'Pedir Insumos', icon: <PlusCircle className="w-4 h-4" /> },
-          { id: 'mis_solicitudes', label: 'Mis Pedidos', icon: <ListOrdered className="w-4 h-4" /> },
+          { id: 'portal_tecnico', label: 'Buscador y Retiros', icon: <Search className="w-4 h-4" /> },
           { id: 'mis_retiros', label: 'Mis Actas de Retiro', icon: <FileText className="w-4 h-4" /> },
         ];
       case 'supervisor':
