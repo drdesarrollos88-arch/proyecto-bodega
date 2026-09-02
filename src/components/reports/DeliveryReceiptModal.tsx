@@ -10,15 +10,30 @@ interface DeliveryReceiptModalProps {
 export const DeliveryReceiptModal: React.FC<DeliveryReceiptModalProps> = ({ delivery, onClose }) => {
   if (!delivery) return null;
 
+  // Cerrar modal con tecla Escape
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const handlePrint = () => {
     window.print();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl border border-slate-300 overflow-hidden my-6">
-        {/* Barra Superior con Controles (No imprimible) */}
-        <div className="flex items-center justify-between px-4 py-2.5 bg-slate-800 text-white no-print">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg shadow-2xl w-full max-w-3xl border border-slate-300 overflow-hidden my-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Barra Superior con Controles Sticky (Siempre visible arriba para cerrar) */}
+        <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-2.5 bg-slate-800 text-white shadow no-print">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-emerald-400" />
             <span className="text-calibri-title text-white">
@@ -28,15 +43,17 @@ export const DeliveryReceiptModal: React.FC<DeliveryReceiptModalProps> = ({ deli
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-700 hover:bg-sky-600 text-white rounded text-calibri-normal font-bold transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-700 hover:bg-sky-600 text-white rounded text-xs font-bold transition-colors shadow-sm"
             >
-              <Printer className="w-4 h-4" /> Imprimir / Exportar PDF
+              <Printer className="w-4 h-4" /> Imprimir / PDF
             </button>
             <button
+              type="button"
               onClick={onClose}
-              className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-700"
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-rose-700 hover:bg-rose-800 text-white rounded text-xs font-bold shadow transition-colors touch-target"
+              title="Cerrar ventana (Esc)"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" /> Cerrar (Esc)
             </button>
           </div>
         </div>
@@ -287,6 +304,29 @@ export const DeliveryReceiptModal: React.FC<DeliveryReceiptModalProps> = ({ deli
           {/* Sello de Auditoría Inmutable */}
           <div className="p-2 bg-slate-100 rounded text-center text-xs text-slate-500 border border-slate-200">
             Documento emitido electrónicamente por el Sistema de Gestión de Bodega e Inventario. Válido para auditoría interna y justificación de costos operacionales.
+          </div>
+        </div>
+
+        {/* Barra Inferior Fija para Cerrar (No imprimible) */}
+        <div className="p-3.5 bg-slate-100 border-t border-slate-300 flex flex-wrap items-center justify-between gap-2.5 no-print">
+          <span className="text-xs text-slate-600 font-medium">
+            Folio Auditado: <strong className="text-sky-900 font-mono">{delivery.id}</strong>
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 rounded font-bold text-xs flex items-center gap-1.5 shadow-sm transition-colors touch-target"
+            >
+              <Printer className="w-4 h-4 text-sky-700" /> Imprimir Documento
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2 bg-sky-700 hover:bg-sky-800 text-white rounded font-bold text-xs flex items-center gap-1.5 shadow-md transition-colors touch-target"
+            >
+              <CheckCircle className="w-4 h-4" /> Cerrar y Volver a la Bandeja
+            </button>
           </div>
         </div>
       </div>

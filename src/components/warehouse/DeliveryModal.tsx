@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { WarehouseRequest, DeliveryRecord } from '../../types';
 import { store } from '../../services/store';
 import { useAuth } from '../../context/AuthContext';
@@ -30,6 +30,15 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
   const [damagedPhotoData, setDamagedPhotoData] = useState<string>('');
   const [lossReason, setLossReason] = useState<string>('Extraviado en terreno durante maniobra de faena');
 
+  // Cerrar modal con tecla Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   if (!request) return null;
 
   const totalAmount = request.items.reduce((s, i) => s + i.total_price, 0);
@@ -38,26 +47,23 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
     e.preventDefault();
     setValidationError(null);
 
-    // Firma digital siempre obligatoria
+    // 1. Firma digital obligatoria siempre
     if (!signatureData) {
       setValidationError('La firma digital del receptor es obligatoria para garantizar la trazabilidad.');
       return;
     }
 
-    // Validación condicional de foto única:
+    // 2. Foto 1: Producto dañado (solo si aplica devolución por daño)
     if (returnStatus === 'devuelto_danado' && !damagedPhotoData) {
-      setValidationError('Para dar de baja el producto dañado, es obligatorio tomar la fotografía del artículo deteriorado.');
+      setValidationError('Falta la FOTO 1: Debe capturar la fotografía del producto dañado recibido para darlo de baja.');
       return;
     }
 
-    if (returnStatus === 'sin_retorno_nuevo' && !photoData) {
-      setValidationError('Debe tomar la fotografía de respaldo de la entrega de insumos.');
+    // 3. Foto 2: Entrega de insumos nuevos (siempre requerida para respaldar lo que sale de bodega)
+    if (!photoData) {
+      setValidationError('Falta la FOTO DE ENTREGA: Debe capturar la fotografía de los insumos nuevos siendo entregados al técnico.');
       return;
     }
-
-    // Si es extraviado, NO requiere foto
-
-    const finalPhoto = returnStatus === 'devuelto_danado' ? damagedPhotoData : photoData;
 
     try {
       setIsProcessing(true);
@@ -65,7 +71,7 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
         requestId: request.id,
         warehouseStaffName: user.name,
         signatureData,
-        photoData: finalPhoto || '',
+        photoData: photoData,
         returnStatus,
         damagedPhotoData: returnStatus === 'devuelto_danado' ? damagedPhotoData : undefined,
         lossReason: returnStatus === 'extraviado' ? lossReason.trim() : undefined,
@@ -81,10 +87,16 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl border border-slate-300 overflow-hidden my-6">
-        {/* Cabecera */}
-        <div className="flex items-center justify-between px-4 py-3 bg-sky-800 text-white">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg shadow-2xl w-full max-w-2xl border border-slate-300 overflow-hidden my-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Cabecera Sticky (Siempre visible arriba para poder cerrar) */}
+        <div className="sticky top-0 z-20 flex items-center justify-between px-4 py-3 bg-sky-800 text-white shadow">
           <div className="flex items-center gap-2">
             <Package className="w-5 h-5 text-sky-200" />
             <h2 className="text-calibri-title text-white">
@@ -92,10 +104,13 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
             </h2>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-white/80 hover:text-white p-1 rounded hover:bg-sky-700"
+            className="flex items-center gap-1 text-white/80 hover:text-white px-2 py-1 rounded bg-sky-900/60 hover:bg-sky-700 border border-sky-600 text-xs font-bold transition-colors"
+            title="Cerrar ventana (Esc)"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
+            <span>Cerrar (Esc)</span>
           </button>
         </div>
 
@@ -235,68 +250,40 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
               </button>
             </div>
 
-            {/* Condicional: Si es Producto Dañado -> 1 Sola Foto (Del Daño) */}
+            {/* Condicional: Si es Producto Dañado -> FOTO 1 (Del Daño) */}
             {returnStatus === 'devuelto_danado' && (
-              <div className="p-3 bg-amber-50/80 border border-amber-300 rounded-lg space-y-2">
+              <div className="p-3 bg-amber-50/90 border-2 border-amber-400 rounded-lg space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-calibri-title text-amber-950 font-bold text-xs flex items-center gap-1.5">
                     <Camera className="w-4 h-4 text-amber-700" />
-                    Fotografía Única del Producto Dañado a Dar de Baja: *
+                    FOTO 1: Fotografía del Producto Dañado a Dar de Baja: *
                   </label>
                   {damagedPhotoData && (
                     <span className="text-xs text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
-                      ✓ Foto registrada
+                      ✓ Foto 1 Registrada
                     </span>
                   )}
                 </div>
                 <p className="text-xs text-amber-800">
-                  Captura el estado del artículo en desuso devuelto para la baja física de inventario. (Esta será la única foto requerida).
+                  Enfoca exclusivamente el <strong>artículo deteriorado o quebrado</strong> que entrega el técnico para darlo de baja en bodega.
                 </p>
                 <CameraCapture
-                  title="Foto del Producto Dañado (Baja)"
-                  subtitle="Enfoca el artículo roto o deteriorado devuelto por el técnico"
-                  onCapture={(url) => {
-                    setDamagedPhotoData(url);
-                    setPhotoData(url);
-                  }}
+                  title="Foto 1: Producto Deteriorado (Baja Física)"
+                  subtitle="Enfoca el producto viejo/roto para justificar la baja"
+                  onCapture={(url) => setDamagedPhotoData(url)}
                 />
               </div>
             )}
 
-            {/* Condicional: Si es Insumo Nuevo -> 1 Sola Foto (De Entrega) */}
-            {returnStatus === 'sin_retorno_nuevo' && (
-              <div className="p-3 bg-sky-50/80 border border-sky-300 rounded-lg space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-calibri-title text-sky-950 font-bold text-xs flex items-center gap-1.5">
-                    <Camera className="w-4 h-4 text-sky-700" />
-                    Fotografía de Entrega de Insumos: *
-                  </label>
-                  {photoData && (
-                    <span className="text-xs text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
-                      ✓ Foto registrada
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-sky-800">
-                  Captura los insumos siendo entregados en ventanilla de bodega.
-                </p>
-                <CameraCapture
-                  title="Foto de Entrega"
-                  subtitle="Enfoca los insumos entregados al técnico receptor"
-                  onCapture={(url) => setPhotoData(url)}
-                />
-              </div>
-            )}
-
-            {/* Condicional: Si es Extraviado -> Declaración de pérdida SIN FOTO */}
+            {/* Condicional: Si es Extraviado -> Declaración de pérdida SIN FOTO 1 */}
             {returnStatus === 'extraviado' && (
               <div className="p-3 bg-rose-50 border border-rose-300 rounded-lg space-y-2">
                 <div className="flex items-center gap-2 text-rose-900 font-bold text-xs">
                   <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
-                  <span>Declaración Oficial de Extravío en Faena (Sin Foto)</span>
+                  <span>Declaración Oficial de Extravío en Faena (Sin Foto de Devolución)</span>
                 </div>
                 <p className="text-xs text-rose-700">
-                  El artículo anterior se declara formalmente extraviado. Quedará consignado en el acta sin necesidad de fotografía.
+                  El artículo anterior se declara formalmente extraviado. Quedará consignado en el acta sin fotografía de devolución física.
                 </p>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -329,7 +316,7 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
             />
           </div>
 
-          {/* MÓDULO DE FIRMA DIGITAL (SIEMPRE REQUERIDO) */}
+          {/* 1. MÓDULO DE FIRMA DIGITAL (SIEMPRE REQUERIDO) */}
           <div className="space-y-1">
             <SignaturePad
               signeeName={request.technician_name}
@@ -337,14 +324,43 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
             />
           </div>
 
-          {/* Botones de Finalización */}
-          <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
+          {/* 2. MÓDULO DE FOTO DE ENTREGA DE LOS NUEVOS INSUMOS (SIEMPRE REQUERIDO) */}
+          <div className="p-3 bg-sky-50/90 border-2 border-sky-400 rounded-lg space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-calibri-title text-sky-950 font-bold text-xs flex items-center gap-1.5">
+                <Camera className="w-4 h-4 text-sky-700" />
+                {returnStatus === 'devuelto_danado'
+                  ? 'FOTO 2: Fotografía de Entrega de los Insumos Nuevos: *'
+                  : 'Fotografía de Respaldo de la Entrega de Insumos: *'}
+              </label>
+              {photoData && (
+                <span className="text-xs text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+                  ✓ Foto de Entrega Registrada
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-sky-800">
+              Enfoca los <strong>insumos nuevos</strong> que le estás entregando al técnico en la ventanilla de bodega.
+            </p>
+            <CameraCapture
+              title={
+                returnStatus === 'devuelto_danado'
+                  ? 'Foto 2: Entrega de Materiales Nuevos'
+                  : 'Foto de Entrega de Insumos'
+              }
+              subtitle="Enfoca los nuevos insumos entregados al técnico receptor"
+              onCapture={(url) => setPhotoData(url)}
+            />
+          </div>
+
+          {/* Botones de Finalización con Cierre Fácil */}
+          <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-slate-300 rounded text-calibri-normal text-slate-600 hover:bg-slate-100"
+              className="inline-flex items-center gap-1 px-4 py-2 border border-slate-300 rounded text-calibri-normal text-slate-700 bg-slate-100 hover:bg-slate-200 font-bold text-xs transition-colors touch-target"
             >
-              Cancelar
+              <X className="w-4 h-4" /> Cancelar y Cerrar
             </button>
             <button
               type="submit"
