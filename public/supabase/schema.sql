@@ -86,6 +86,9 @@ CREATE TABLE IF NOT EXISTS deliveries (
     total_amount NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     signature_data TEXT NOT NULL, -- Datos de la firma táctil (Base64 o URL Storage)
     photo_data TEXT NOT NULL,     -- Fotografía de la entrega (Base64 o URL Storage)
+    return_status TEXT DEFAULT 'sin_retorno_nuevo',
+    damaged_photo_data TEXT,
+    loss_reason TEXT,
     observations TEXT,
     delivered_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

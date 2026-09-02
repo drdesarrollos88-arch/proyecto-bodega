@@ -51,7 +51,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, onOpenS
         return [
           { id: 'aprobaciones', label: 'Bandeja de Aprobación', icon: <ClipboardCheck className="w-4 h-4" /> },
           { id: 'stock_consulta', label: 'Verificar Stock', icon: <Package className="w-4 h-4" /> },
-          { id: 'presupuesto_supervisor', label: 'Presupuesto CC', icon: <DollarSign className="w-4 h-4" /> },
         ];
       case 'bodeguero_admin':
         return [

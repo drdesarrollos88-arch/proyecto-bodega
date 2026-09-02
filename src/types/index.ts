@@ -78,6 +78,8 @@ export interface WarehouseRequest {
   items: RequestItem[];
 }
 
+export type ItemReturnStatus = 'devuelto_danado' | 'extraviado' | 'sin_retorno_nuevo';
+
 export interface DeliveryRecord {
   id: string;
   request_id: string;
@@ -88,6 +90,9 @@ export interface DeliveryRecord {
   total_amount: number;
   signature_data: string;
   photo_data: string;
+  return_status?: ItemReturnStatus;
+  damaged_photo_data?: string;
+  loss_reason?: string;
   observations?: string;
   delivered_at: string;
   items: RequestItem[];

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { WarehouseRequest, DeliveryRecord } from '../../types';
 import { store } from '../../services/store';
 import { useAuth } from '../../context/AuthContext';
-import { X, Check, AlertCircle, ShieldCheck, User, Calendar, DollarSign, Package } from 'lucide-react';
+import { X, Check, AlertCircle, ShieldCheck, User, Calendar, DollarSign, Package, Camera, AlertTriangle, RefreshCw } from 'lucide-react';
 import { SignaturePad } from '../common/SignaturePad';
 import { CameraCapture } from '../common/CameraCapture';
 
@@ -25,6 +25,11 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  // Control de reposición (producto anterior)
+  const [returnStatus, setReturnStatus] = useState<'devuelto_danado' | 'extraviado' | 'sin_retorno_nuevo'>('devuelto_danado');
+  const [damagedPhotoData, setDamagedPhotoData] = useState<string>('');
+  const [lossReason, setLossReason] = useState<string>('Extraviado en terreno durante maniobra de faena');
+
   if (!request) return null;
 
   const totalAmount = request.items.reduce((s, i) => s + i.total_price, 0);
@@ -33,14 +38,19 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
     e.preventDefault();
     setValidationError(null);
 
-    // Validación estricta de auditoría: Se requiere firma y foto
+    // Validación estricta de auditoría: Se requiere firma y foto de entrega
     if (!signatureData) {
       setValidationError('La firma digital del receptor es obligatoria para garantizar la trazabilidad.');
       return;
     }
 
     if (!photoData) {
-      setValidationError('La fotografía de respaldo de la entrega es obligatoria para la auditoría.');
+      setValidationError('La fotografía de respaldo de la entrega de los insumos es obligatoria para la auditoría.');
+      return;
+    }
+
+    if (returnStatus === 'devuelto_danado' && !damagedPhotoData) {
+      setValidationError('Para la reposición por producto dañado, es obligatorio tomar la fotografía del artículo deteriorado que se recibe.');
       return;
     }
 
@@ -51,6 +61,9 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
         warehouseStaffName: user.name,
         signatureData,
         photoData,
+        returnStatus,
+        damagedPhotoData: returnStatus === 'devuelto_danado' ? damagedPhotoData : undefined,
+        lossReason: returnStatus === 'extraviado' ? lossReason.trim() : undefined,
         observations: observations.trim() || undefined,
       });
 
@@ -142,6 +155,127 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
                 </tbody>
               </table>
             </div>
+          </div>
+
+          {/* CONTROL DE REPOSICIÓN: DEVOLUCIÓN DE ARTÍCULO DAÑADO O EXTRAVIADO */}
+          <div className="p-3 bg-slate-50 border border-slate-300 rounded-lg space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+              <div>
+                <h3 className="text-calibri-title text-slate-900 font-bold flex items-center gap-1.5">
+                  <RefreshCw className="w-4 h-4 text-emerald-700" />
+                  Control de Reposición (Artículo Anterior)
+                </h3>
+                <p className="text-calibri-normal text-slate-500 text-xs">
+                  Indica si el técnico entrega el producto deteriorado para dar de baja o si lo declara extraviado.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setReturnStatus('devuelto_danado')}
+                className={`p-2.5 rounded-lg border text-left transition-all ${
+                  returnStatus === 'devuelto_danado'
+                    ? 'bg-amber-50 border-amber-500 text-amber-950 ring-1 ring-amber-500 shadow-sm'
+                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <div className="font-bold text-xs flex items-center gap-1">
+                  <span>🛠️</span> Producto Dañado
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Entrega física para baja con foto obligatoria del daño.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setReturnStatus('extraviado');
+                  setDamagedPhotoData('');
+                }}
+                className={`p-2.5 rounded-lg border text-left transition-all ${
+                  returnStatus === 'extraviado'
+                    ? 'bg-rose-50 border-rose-500 text-rose-950 ring-1 ring-rose-500 shadow-sm'
+                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <div className="font-bold text-xs flex items-center gap-1">
+                  <span>⚠️</span> Extraviado en Faena
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Pérdida en terreno. Sin foto y queda como extraviado.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setReturnStatus('sin_retorno_nuevo');
+                  setDamagedPhotoData('');
+                }}
+                className={`p-2.5 rounded-lg border text-left transition-all ${
+                  returnStatus === 'sin_retorno_nuevo'
+                    ? 'bg-sky-50 border-sky-500 text-sky-950 ring-1 ring-sky-500 shadow-sm'
+                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <div className="font-bold text-xs flex items-center gap-1">
+                  <span>✨</span> Insumo Nuevo
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Primera asignación o insumo consumible regular.
+                </p>
+              </button>
+            </div>
+
+            {/* Condicional: Si es Producto Dañado -> Foto Obligatoria del Daño */}
+            {returnStatus === 'devuelto_danado' && (
+              <div className="p-3 bg-amber-50/80 border border-amber-300 rounded-lg space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-calibri-title text-amber-950 font-bold text-xs flex items-center gap-1.5">
+                    <Camera className="w-4 h-4 text-amber-700" />
+                    Fotografía del Producto Dañado a Dar de Baja: *
+                  </label>
+                  {damagedPhotoData && (
+                    <span className="text-xs text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+                      ✓ Foto registrada
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-amber-800">
+                  Captura el estado del artículo en desuso para respaldar la auditoría de baja y reposición física.
+                </p>
+                <CameraCapture onCapture={(url) => setDamagedPhotoData(url)} />
+              </div>
+            )}
+
+            {/* Condicional: Si es Extraviado -> Declaración de pérdida sin foto */}
+            {returnStatus === 'extraviado' && (
+              <div className="p-3 bg-rose-50 border border-rose-300 rounded-lg space-y-2">
+                <div className="flex items-center gap-2 text-rose-900 font-bold text-xs">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                  <span>Declaración Oficial de Extravío en Faena (Sin Foto de Devolución)</span>
+                </div>
+                <p className="text-xs text-rose-700">
+                  El artículo anterior se declara formalmente extraviado o irrecuperable. Quedará consignado en el acta de entrega sin foto.
+                </p>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Justificación o Circunstancia del Extravío: *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={lossReason}
+                    onChange={(e) => setLossReason(e.target.value)}
+                    placeholder="Ej: Caída en ducto / Pérdida durante turno nocturno en faena..."
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-calibri-normal text-slate-800 bg-white"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Observaciones de Entrega */}

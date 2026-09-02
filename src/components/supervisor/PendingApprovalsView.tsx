@@ -225,8 +225,8 @@ export const PendingApprovalsView: React.FC = () => {
                 {/* Justificación y Centro de Costos */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 py-2.5 text-calibri-normal">
                   <div>
-                    <span className="text-xs text-slate-500 block font-bold">Centro de Costos:</span>
-                    <p className="text-slate-800 font-semibold">{req.cost_center_id} - {cc?.name || 'N/A'}</p>
+                    <span className="text-xs text-slate-500 block font-bold">Área / Cuadrilla:</span>
+                    <p className="text-slate-800 font-semibold">{cc?.name || req.cost_center_id}</p>
                     {req.work_order && (
                       <p className="text-xs text-slate-600 mt-0.5">
                         Orden Trabajo: <strong className="text-slate-800">{req.work_order}</strong>
@@ -249,42 +249,82 @@ export const PendingApprovalsView: React.FC = () => {
                       <tr className="bg-slate-100 text-slate-700 text-xs font-bold border-b border-slate-300">
                         <th className="p-2">SKU</th>
                         <th className="p-2">Artículo Solicitado</th>
+                        <th className="p-2">Última Entrega a este Técnico</th>
                         <th className="p-2 text-center">Cant. Requerida</th>
                         <th className="p-2 text-center">Stock Bodega</th>
                         <th className="p-2 text-center">Disponibilidad</th>
+                        <th className="p-2 text-right">Precio Unitario</th>
                         <th className="p-2 text-right">Costo Estimado</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
-                      {itemsWithStock.map((it) => (
-                        <tr key={it.id} className={!it.hasEnoughStock ? 'bg-rose-50/60' : 'hover:bg-slate-50'}>
-                          <td className="p-2 font-mono text-xs font-bold text-sky-800">{it.product_sku}</td>
-                          <td className="p-2 text-slate-800 font-medium">{it.product_name}</td>
-                          <td className="p-2 text-center font-bold text-slate-900">{it.quantity}</td>
-                          <td className="p-2 text-center font-semibold text-slate-700">
-                            {it.currentStock} {it.unit}
-                          </td>
-                          <td className="p-2 text-center">
-                            {it.hasEnoughStock ? (
-                              <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">
-                                <Check className="w-3 h-3" /> Hay Stock
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded border border-rose-200">
-                                <AlertTriangle className="w-3 h-3" /> Sin Stock Suficiente
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-2 text-right text-slate-800 font-semibold">
-                            ${it.total_price.toLocaleString('es-CL')}
-                          </td>
-                        </tr>
-                      ))}
+                      {itemsWithStock.map((it) => {
+                        const deliveries = store.getDeliveries();
+                        const prevDelivery = deliveries.find((d) =>
+                          d.technician_rut === req.technician_rut &&
+                          d.items.some((i) => i.product_sku === it.product_sku)
+                        );
+                        let prevDeliveryInfo: { date: string; daysAgo: number; actaId: string } | null = null;
+                        if (prevDelivery) {
+                          const pDate = new Date(prevDelivery.delivered_at);
+                          const days = Math.floor((Date.now() - pDate.getTime()) / (1000 * 60 * 60 * 24));
+                          prevDeliveryInfo = {
+                            date: pDate.toLocaleDateString('es-CL'),
+                            daysAgo: days,
+                            actaId: prevDelivery.id,
+                          };
+                        }
+
+                        return (
+                          <tr key={it.id} className={!it.hasEnoughStock ? 'bg-rose-50/60' : 'hover:bg-slate-50'}>
+                            <td className="p-2 font-mono text-xs font-bold text-sky-800">{it.product_sku}</td>
+                            <td className="p-2 text-slate-800 font-medium">{it.product_name}</td>
+                            <td className="p-2">
+                              {prevDeliveryInfo ? (
+                                <span className="inline-flex items-center gap-1 text-xs text-amber-900 bg-amber-50 border border-amber-300 px-2 py-0.5 rounded font-medium">
+                                  <Clock className="w-3 h-3 text-amber-700 flex-shrink-0" />
+                                  <span>
+                                    {prevDeliveryInfo.daysAgo === 0
+                                      ? 'Hoy'
+                                      : `Hace ${prevDeliveryInfo.daysAgo} días`}{' '}
+                                    ({prevDeliveryInfo.date} • {prevDeliveryInfo.actaId})
+                                  </span>
+                                </span>
+                              ) : (
+                                <span className="text-xs text-slate-400 italic">
+                                  Sin entregas previas registradas
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-2 text-center font-bold text-slate-900">{it.quantity}</td>
+                            <td className="p-2 text-center font-semibold text-slate-700">
+                              {it.currentStock} {it.unit}
+                            </td>
+                            <td className="p-2 text-center">
+                              {it.hasEnoughStock ? (
+                                <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">
+                                  <Check className="w-3 h-3" /> Hay Stock
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded border border-rose-200">
+                                  <AlertTriangle className="w-3 h-3" /> Sin Stock
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-2 text-right text-slate-700 text-xs font-mono">
+                              ${it.unit_price.toLocaleString('es-CL')}
+                            </td>
+                            <td className="p-2 text-right text-slate-900 font-semibold">
+                              ${it.total_price.toLocaleString('es-CL')}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                     <tfoot>
                       <tr className="bg-slate-50 border-t border-slate-300 font-bold text-xs">
-                        <td colSpan={5} className="p-2 text-right text-slate-600">
-                          Total Imputable a Presupuesto ({req.cost_center_id}):
+                        <td colSpan={6} className="p-2 text-right text-slate-600">
+                          Valor Estimado Total de la Solicitud:
                         </td>
                         <td className="p-2 text-right text-sky-900 text-calibri-title">
                           ${totalEstimatedCost.toLocaleString('es-CL')}

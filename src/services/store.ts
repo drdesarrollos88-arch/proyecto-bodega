@@ -816,6 +816,9 @@ class WarehouseStore {
     warehouseStaffName: string;
     signatureData: string;
     photoData: string;
+    returnStatus?: 'devuelto_danado' | 'extraviado' | 'sin_retorno_nuevo';
+    damagedPhotoData?: string;
+    lossReason?: string;
     observations?: string;
   }): DeliveryRecord {
     const requests = this.getRequests();
@@ -855,6 +858,9 @@ class WarehouseStore {
       total_amount: totalAmount,
       signature_data: params.signatureData,
       photo_data: params.photoData,
+      return_status: params.returnStatus,
+      damaged_photo_data: params.damagedPhotoData,
+      loss_reason: params.lossReason,
       observations: params.observations,
       delivered_at: new Date().toISOString(),
       items: req.items,
@@ -881,6 +887,9 @@ class WarehouseStore {
         total_amount: newDelivery.total_amount,
         signature_data: newDelivery.signature_data,
         photo_data: newDelivery.photo_data,
+        return_status: newDelivery.return_status,
+        damaged_photo_data: newDelivery.damaged_photo_data,
+        loss_reason: newDelivery.loss_reason,
         observations: newDelivery.observations,
       }]).then();
 

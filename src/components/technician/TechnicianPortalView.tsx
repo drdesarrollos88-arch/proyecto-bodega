@@ -162,76 +162,111 @@ export const TechnicianPortalView: React.FC<TechnicianPortalViewProps> = ({ onNa
       )}
 
       {/* =========================================================================
-          1. ZONA DE NOTIFICACIONES: PEDIDOS LISTOS PARA RETIRAR EN BODEGA
+          1. ZONA DE NOTIFICACIONES AGRUPADAS (ORDENADAS: PENDIENTES ARRIBA, RETIROS ABAJO)
       ========================================================================= */}
-      {readyToPickUp.length > 0 && (
-        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-4 rounded-xl shadow-md space-y-3">
-          <div className="flex items-center justify-between">
+
+      {/* TARJETA 1: SOLICITUDES PENDIENTES DE AUTORIZACIÓN (SIEMPRE AGRUPADAS EN UNA SOLA TARJETA) */}
+      {pendingRequests.length > 0 && (
+        <div className="bg-amber-50 border-2 border-amber-300 text-amber-900 rounded-xl shadow-sm p-3.5 space-y-2.5">
+          <div className="flex items-center justify-between border-b border-amber-200 pb-2">
             <div className="flex items-center gap-2">
-              <span className="p-2 rounded-full bg-white/20 text-white animate-bounce">
-                <Bell className="w-5 h-5" />
+              <span className="p-1.5 rounded-full bg-amber-200 text-amber-900">
+                <Clock className="w-4 h-4" />
               </span>
               <div>
-                <h2 className="text-calibri-title text-white text-base font-bold">
-                  ¡Tienes {readyToPickUp.length} retiro(s) autorizado(s) en Bodega!
+                <h2 className="text-calibri-title text-amber-950 text-sm font-bold leading-none">
+                  Pendiente de Autorización ({pendingRequests.length} solicitud{pendingRequests.length > 1 ? 'es' : ''})
                 </h2>
-                <p className="text-calibri-normal text-emerald-100 text-xs">
-                  Tu supervisor ya revisó el stock. Puedes acercarte ahora a la Bodega Central a retirar.
-                </p>
+                <span className="text-calibri-normal text-amber-800 text-xs">
+                  Tu supervisor está verificando el stock en bodega para autorizar el retiro.
+                </span>
               </div>
             </div>
-            <span className="hidden sm:inline-flex px-2.5 py-1 bg-white text-emerald-900 rounded-full text-xs font-bold">
-              Pase de Retiro Activo
+            <span className="text-xs px-2 py-0.5 rounded bg-amber-200 text-amber-900 font-bold">
+              En Revisión
             </span>
           </div>
 
-          <div className="space-y-2">
-            {readyToPickUp.map((req) => (
+          <div className="space-y-1.5">
+            {pendingRequests.map((req) => (
               <div
                 key={req.id}
-                className="bg-white text-slate-800 p-3 rounded-lg border border-emerald-300 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                className="bg-white p-2.5 rounded-lg border border-amber-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-1.5"
               >
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-emerald-800 text-xs">{req.id}</span>
-                    <span className="text-xs px-2 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold">
-                      Autorizado por {req.supervisor_name || 'Supervisor'}
+                    <span className="font-mono font-bold text-amber-900">{req.id}</span>
+                    <span className="text-slate-400">•</span>
+                    <span className="text-slate-700 font-medium truncate">
+                      {req.items.map((i) => `${i.quantity}x ${i.product_name}`).join(', ')}
                     </span>
                   </div>
-                  <div className="mt-1 text-calibri-normal text-slate-700 text-xs">
-                    <strong>Insumos a retirar:</strong>{' '}
-                    {req.items.map((i) => `${i.quantity}x ${i.product_name}`).join(', ')}
-                  </div>
-                  {req.supervisor_notes && (
-                    <p className="text-xs text-slate-500 italic mt-0.5">
-                      Nota supervisor: "{req.supervisor_notes}"
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="inline-flex items-center gap-1 text-xs text-slate-600 bg-slate-100 px-2.5 py-1.5 rounded">
-                    <MapPin className="w-3.5 h-3.5 text-sky-700" /> Bodega Principal
+                  <span className="text-slate-500 block mt-0.5">
+                    Motivo: {req.reason} {req.work_order ? `• OT: ${req.work_order}` : ''}
                   </span>
                 </div>
+                <span className="text-slate-400 text-right whitespace-nowrap text-xs">
+                  {new Date(req.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} hrs
+                </span>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Notificación de pedidos en revisión */}
-      {pendingRequests.length > 0 && readyToPickUp.length === 0 && (
-        <div className="bg-amber-50 border border-amber-300 p-3 rounded-lg flex items-center justify-between text-amber-900 text-calibri-normal text-xs shadow-sm">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-amber-600 animate-spin" />
-            <span>
-              Tienes <strong>{pendingRequests.length} solicitud(es)</strong> en revisión por tu supervisor. Te avisaremos aquí apenas la autorice.
+      {/* TARJETA 2: AUTORIZADOS PARA RETIRO EN BODEGA (SIEMPRE AGRUPADOS EN UNA SOLA TARJETA) */}
+      {readyToPickUp.length > 0 && (
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-4 rounded-xl shadow-md space-y-2.5">
+          <div className="flex items-center justify-between border-b border-emerald-500/60 pb-2">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-full bg-white/20 text-white animate-bounce">
+                <Bell className="w-4 h-4" />
+              </span>
+              <div>
+                <h2 className="text-calibri-title text-white text-sm font-bold leading-none">
+                  Autorizado para Retiro en Bodega ({readyToPickUp.length} pedido{readyToPickUp.length > 1 ? 's' : ''})
+                </h2>
+                <p className="text-calibri-normal text-emerald-100 text-xs mt-0.5">
+                  Stock revisado. Puedes acercarte a la Bodega Central para la entrega con firma táctil y foto.
+                </p>
+              </div>
+            </div>
+            <span className="hidden sm:inline-flex px-2.5 py-0.5 bg-white text-emerald-900 rounded-full text-xs font-bold">
+              Pase de Retiro Activo
             </span>
           </div>
-          <span className="font-mono font-bold text-amber-800">
-            {pendingRequests[0].id}
-          </span>
+
+          <div className="space-y-1.5">
+            {readyToPickUp.map((req) => (
+              <div
+                key={req.id}
+                className="bg-white text-slate-800 p-2.5 rounded-lg border border-emerald-300 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-emerald-800">{req.id}</span>
+                    <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold text-xs">
+                      Autorizado por {req.supervisor_name || 'Supervisor'}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-slate-700 font-medium truncate">
+                    <strong>Insumos:</strong> {req.items.map((i) => `${i.quantity}x ${i.product_name}`).join(', ')}
+                  </div>
+                  {req.supervisor_notes && (
+                    <p className="text-slate-500 italic mt-0.5">
+                      "{req.supervisor_notes}"
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className="inline-flex items-center gap-1 text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded font-medium">
+                    <MapPin className="w-3.5 h-3.5 text-sky-700" /> Bodega Principal
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -424,3 +459,4 @@ export const TechnicianPortalView: React.FC<TechnicianPortalViewProps> = ({ onNa
     </div>
   );
 };
+

@@ -142,6 +142,56 @@ export const DeliveryReceiptModal: React.FC<DeliveryReceiptModalProps> = ({ deli
             </div>
           </div>
 
+          {/* Control de Reposición y Estado de Devolución del Artículo Anterior */}
+          <div className="p-3 rounded border text-calibri-normal text-xs space-y-2 bg-slate-50 border-slate-200">
+            <span className="text-slate-500 font-bold block uppercase text-[11px]">
+              Trazabilidad y Estado de Reposición (Artículo Anterior):
+            </span>
+            {delivery.return_status === 'devuelto_danado' && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-amber-50 border border-amber-300 rounded text-amber-950">
+                <div>
+                  <span className="font-bold flex items-center gap-1.5 text-xs text-amber-900">
+                    <span>🛠️</span> Producto Anterior Devuelto Dañado / Deteriorado
+                  </span>
+                  <p className="text-xs text-amber-800 mt-0.5">
+                    El técnico hizo entrega física del insumo en mal estado. Se da de baja conforme a protocolo interno.
+                  </p>
+                </div>
+                <span className="px-2 py-0.5 rounded bg-amber-200 text-amber-900 font-bold text-xs whitespace-nowrap">
+                  Devolución Física Conforme
+                </span>
+              </div>
+            )}
+
+            {delivery.return_status === 'extraviado' && (
+              <div className="p-2.5 bg-rose-50 border border-rose-300 rounded text-rose-950 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold flex items-center gap-1.5 text-xs text-rose-900">
+                    <span>⚠️</span> Producto Anterior Declarado EXTRAVIADO en Faena
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-rose-200 text-rose-900 font-bold text-xs">
+                    Sin Devolución Física
+                  </span>
+                </div>
+                <p className="text-xs text-rose-800">
+                  <strong>Circunstancia del Extravío:</strong> {delivery.loss_reason || 'Extraviado en terreno durante faena'}
+                </p>
+                <p className="text-[11px] text-slate-500 italic">
+                  * Por tratarse de pérdida o extravío en terreno, no se registra fotografía física de devolución.
+                </p>
+              </div>
+            )}
+
+            {(!delivery.return_status || delivery.return_status === 'sin_retorno_nuevo') && (
+              <div className="p-2 bg-sky-50 border border-sky-200 rounded text-sky-900">
+                <span className="font-bold text-xs">✨ Asignación de Insumo Nuevo / Sin Reemplazo Previo</span>
+                <p className="text-[11px] text-sky-800 mt-0.5">
+                  Corresponde a primera asignación o insumo fungible directo sin producto a dar de baja.
+                </p>
+              </div>
+            )}
+          </div>
+
           {/* Observaciones */}
           {delivery.observations && (
             <div className="p-2.5 bg-slate-50 border border-slate-200 rounded text-calibri-normal">
@@ -150,13 +200,13 @@ export const DeliveryReceiptModal: React.FC<DeliveryReceiptModalProps> = ({ deli
             </div>
           )}
 
-          {/* Evidencia Verificable: Firma Digital y Fotografía */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-200">
+          {/* Evidencia Verificable: Firma Digital, Foto de Entrega y Foto de Daño */}
+          <div className={`grid grid-cols-1 ${delivery.damaged_photo_data ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-3 pt-2 border-t border-slate-200`}>
             {/* Panel de Firma Digital */}
             <div className="border border-slate-300 rounded-lg p-3 bg-slate-50 flex flex-col items-center justify-between">
               <div className="w-full flex items-center justify-between mb-2">
                 <span className="text-calibri-title text-slate-800 flex items-center gap-1">
-                  <FileText className="w-4 h-4 text-sky-700" /> Firma Digital del Receptor
+                  <FileText className="w-4 h-4 text-sky-700" /> Firma Digital
                 </span>
                 <span className="text-xs text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">
                   Verificada
@@ -174,7 +224,7 @@ export const DeliveryReceiptModal: React.FC<DeliveryReceiptModalProps> = ({ deli
                 )}
               </div>
               <div className="w-full text-center mt-2 border-t border-slate-300 pt-1">
-                <p className="text-calibri-normal font-bold text-slate-800">{delivery.technician_name}</p>
+                <p className="text-calibri-normal font-bold text-slate-800 truncate">{delivery.technician_name}</p>
                 <p className="text-xs text-slate-500">RUT: {delivery.technician_rut}</p>
               </div>
             </div>
@@ -183,7 +233,7 @@ export const DeliveryReceiptModal: React.FC<DeliveryReceiptModalProps> = ({ deli
             <div className="border border-slate-300 rounded-lg p-3 bg-slate-50 flex flex-col items-center justify-between">
               <div className="w-full flex items-center justify-between mb-2">
                 <span className="text-calibri-title text-slate-800 flex items-center gap-1">
-                  <Camera className="w-4 h-4 text-sky-700" /> Respaldo Fotográfico
+                  <Camera className="w-4 h-4 text-sky-700" /> Entrega de Insumos
                 </span>
                 <span className="text-xs text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">
                   Auditado
@@ -202,10 +252,36 @@ export const DeliveryReceiptModal: React.FC<DeliveryReceiptModalProps> = ({ deli
               </div>
               <div className="w-full text-center mt-2 border-t border-slate-300 pt-1">
                 <p className="text-xs text-slate-500">
-                  Evidencia fotográfica en el punto de retiro - Bodega Central
+                  Punto de retiro - Bodega Central
                 </p>
               </div>
             </div>
+
+            {/* Panel de Fotografía del Producto Dañado (Baja) */}
+            {delivery.damaged_photo_data && (
+              <div className="border border-amber-300 rounded-lg p-3 bg-amber-50/70 flex flex-col items-center justify-between">
+                <div className="w-full flex items-center justify-between mb-2">
+                  <span className="text-calibri-title text-amber-950 flex items-center gap-1">
+                    <Camera className="w-4 h-4 text-amber-700" /> Producto Dañado
+                  </span>
+                  <span className="text-xs text-amber-900 font-bold bg-amber-200 px-2 py-0.5 rounded border border-amber-300">
+                    Baja Física
+                  </span>
+                </div>
+                <div className="w-full h-32 bg-slate-900 rounded border border-amber-300 flex items-center justify-center overflow-hidden">
+                  <img
+                    src={delivery.damaged_photo_data}
+                    alt="Producto dañado recibido"
+                    className="max-h-full max-w-full object-contain"
+                  />
+                </div>
+                <div className="w-full text-center mt-2 border-t border-amber-300 pt-1">
+                  <p className="text-xs text-amber-800">
+                    Evidencia de deterioro para baja
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Sello de Auditoría Inmutable */}
